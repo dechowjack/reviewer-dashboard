@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reviewer Ticket Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>Reviewer Ticket Dashboard</h1>
+      <p>Reviewer IDs sort as reviewers first (`R#`), unknown IDs next, editors last (`E#`).</p>
+    </header>
+
+    <section class="toolbar">
+      <div class="toolbar-group">
+        <label for="manuscriptSelect">Manuscript</label>
+        <select id="manuscriptSelect">
+          {% for manuscript in manuscripts %}
+          <option value="{{ manuscript.id }}" {% if manuscript.id == selected_manuscript_id %}selected{% endif %}>{{ manuscript.name }}</option>
+          {% endfor %}
+        </select>
+        <button id="createManuscriptBtn" type="button">New</button>
+        <button id="renameManuscriptBtn" type="button">Rename</button>
+      </div>
+
+      <div class="toolbar-group">
+        <label for="importFile">Import CSV/XLSX</label>
+        <input id="importFile" type="file" accept=".csv,.xlsx" />
+        <button id="importBtn" type="button">Import</button>
+      </div>
+
+      <div class="toolbar-group search-group">
+        <label for="searchInput">Search</label>
+        <input id="searchInput" type="search" placeholder="Search comment or response" />
+        <select id="reviewerFilter">
+          <option value="">All reviewers</option>
+        </select>
+        <select id="categoryFilter">
+          <option value="">All categories</option>
+          <option value="editorial">editorial</option>
+          <option value="major">major</option>
+          <option value="minor">minor</option>
+        </select>
+        <select id="statusFilter">
+          <option value="">All statuses</option>
+          <option value="OPEN">Open</option>
+          <option value="COMPLETED">Completed</option>
+        </select>
+      </div>
+
+      <div class="toolbar-group">
+        <button id="prevOpenBtn" type="button" title="Shift+N or P">Previous Open Ticket</button>
+        <button id="nextOpenBtn" type="button" title="N">Next Open Ticket</button>
+        <button id="themeToggleBtn" type="button" title="Toggle light/dark theme">Dark Theme</button>
+      </div>
+    </section>
+
+    <main class="layout">
+      <section class="board">
+        <div class="column">
+          <div class="column-header">Open</div>
+          <div id="openColumn" class="column-body"></div>
+        </div>
+        <div class="column">
+          <div class="column-header">Completed</div>
+          <div id="completedColumn" class="column-body"></div>
+        </div>
+      </section>
+
+      <aside class="detail" id="detailPane">
+        <h2>Ticket Details</h2>
+        <p class="muted">Select a ticket card to edit.</p>
+      </aside>
+    </main>
+
+    <footer class="statusbar">
+      <span id="statusMessage">Ready</span>
+      <span class="muted">{{ next_open_behavior }}</span>
+    </footer>
+
+    <script>
+      window.__INITIAL_MANUSCRIPT_ID__ = {{ selected_manuscript_id }};
+    </script>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

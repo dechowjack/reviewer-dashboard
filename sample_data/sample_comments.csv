@@ -1,0 +1,7 @@
+reviewer_id,line_number,verbatim_comment,comment_category
+R1,120,Clarify the hypothesis in the first paragraph,major
+R1,L210-225,Typo in sentence two: 'teh' should be 'the',editorial
+R2,45,Consider citing a newer source here,minor
+A3,310-315,Could this subsection title be more specific?,minor
+E1,88,Editor note: tighten this section for concision,major
+E2,L410–420,Please align terminology with journal style guide,editorial
