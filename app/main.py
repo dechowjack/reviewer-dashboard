@@ -49,6 +49,10 @@ def parse_line_number(value: Any) -> tuple[str, int]:
 
 def parse_reviewer_sort(reviewer_id: str) -> tuple[int, int]:
     value = (reviewer_id or "").strip()
+    if value.upper().startswith("TODO"):
+        todo_num_match = re.search(r"(\d+)", value)
+        todo_num = int(todo_num_match.group(1)) if todo_num_match else 0
+        return -1, todo_num
     reviewer_match = REVIEWER_RE.match(value)
     if reviewer_match:
         return 0, int(reviewer_match.group(1))
@@ -58,6 +62,21 @@ def parse_reviewer_sort(reviewer_id: str) -> tuple[int, int]:
     fallback_num_match = re.search(r"(\d+)", value)
     fallback_num = int(fallback_num_match.group(1)) if fallback_num_match else 2_147_483_647
     return 1, fallback_num
+
+
+def recalculate_reviewer_sort_keys() -> None:
+    with get_conn() as conn:
+        rows = conn.execute("SELECT id, reviewer_id FROM tickets").fetchall()
+        for row in rows:
+            reviewer_group_sort, reviewer_num_sort = parse_reviewer_sort(row["reviewer_id"])
+            conn.execute(
+                """
+                UPDATE tickets
+                SET reviewer_group_sort = ?, reviewer_num_sort = ?
+                WHERE id = ?
+                """,
+                (reviewer_group_sort, reviewer_num_sort, row["id"]),
+            )
 
 
 def ensure_manuscript_exists(manuscript_id: int) -> None:
@@ -232,6 +251,7 @@ def parse_xlsx_upload(data: bytes) -> list[dict[str, Any]]:
 def startup_event() -> None:
     init_db()
     ensure_default_manuscript()
+    recalculate_reviewer_sort_keys()
 
 
 @app.get("/", response_class=HTMLResponse)

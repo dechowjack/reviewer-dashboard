@@ -118,8 +118,9 @@ Rules:
 Global ticket sort order:
 
 1. Reviewer group:
-  - Reviewers first: `^R\d+$`
-  - Unknown/other IDs next (not matching R/E)
+  - `TODO`-flagged first (`reviewer_id` starts with `TODO`, case-insensitive)
+  - Reviewers next: `^R\d+$`
+  - Unknown/other IDs next (not matching TODO/R/E)
   - Editors last: `^E\d+$`
 2. Within group: numeric ID (`R1 < R2 < R10`, `E1 < E2`)
 3. `line_number_sort` ascending
