@@ -38,6 +38,8 @@
   - Uses existing sort/validation rules and manuscript scoping
   - Supports creating OPEN or COMPLETED (completed still requires non-empty response_text)
 - Added README backup section clarifying storage and manual DB copy command.
+- Updated sorting so `TODO` reviewer IDs appear first.
+- Added startup sort-key recalculation so existing tickets follow new TODO-first ordering immediately.
 
 ## Verification Notes
 
