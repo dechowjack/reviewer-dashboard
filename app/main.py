@@ -366,6 +366,67 @@ async def import_tickets(manuscript_id: int, file: UploadFile = File(...)) -> di
     return {"imported": len(prepared_rows)}
 
 
+@app.post("/api/manuscripts/{manuscript_id}/tickets")
+def create_ticket(manuscript_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+    ensure_manuscript_exists(manuscript_id)
+
+    normalized = normalize_ticket_row(
+        {
+            "reviewer_id": payload.get("reviewer_id", ""),
+            "line_number": payload.get("line_number", payload.get("line_number_display", "")),
+            "verbatim_comment": payload.get("verbatim_comment", ""),
+            "comment_category": payload.get("comment_category", ""),
+        }
+    )
+
+    response_text = str(payload.get("response_text", ""))
+    status = str(payload.get("status", "OPEN")).upper()
+    if status not in {"OPEN", "COMPLETED"}:
+        raise HTTPException(status_code=400, detail="status must be OPEN or COMPLETED")
+    if status == "COMPLETED" and not response_text.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="response_text is required before marking a ticket completed",
+        )
+
+    created = now_iso()
+    with get_conn() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO tickets (
+                manuscript_id,
+                reviewer_id,
+                reviewer_group_sort,
+                reviewer_num_sort,
+                line_number_display,
+                line_number_sort,
+                verbatim_comment,
+                comment_category,
+                response_text,
+                status,
+                created_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                manuscript_id,
+                normalized["reviewer_id"],
+                normalized["reviewer_group_sort"],
+                normalized["reviewer_num_sort"],
+                normalized["line_number_display"],
+                normalized["line_number_sort"],
+                normalized["verbatim_comment"],
+                normalized["comment_category"],
+                response_text,
+                status,
+                created,
+                created,
+            ),
+        )
+        row = conn.execute("SELECT * FROM tickets WHERE id = ?", (cur.lastrowid,)).fetchone()
+    return {"ticket": dict(row)}
+
+
 @app.get("/api/tickets/{ticket_id}")
 def get_ticket(ticket_id: int) -> dict[str, Any]:
     with get_conn() as conn:

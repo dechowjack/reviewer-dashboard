@@ -28,6 +28,7 @@
         <label for="importFile">Import CSV/XLSX</label>
         <input id="importFile" type="file" accept=".csv,.xlsx" />
         <button id="importBtn" type="button">Import</button>
+        <button id="addTicketBtn" type="button">Add Ticket</button>
       </div>
 
       <div class="toolbar-group search-group">
@@ -73,6 +74,44 @@
         <p class="muted">Select a ticket card to edit.</p>
       </aside>
     </main>
+
+    <div id="newTicketModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="newTicketTitle">
+      <div class="modal-content">
+        <h2 id="newTicketTitle">Add Ticket</h2>
+        <div id="newTicketError" class="error"></div>
+        <div class="form-row">
+          <label for="newReviewerId">reviewer_id</label>
+          <input id="newReviewerId" placeholder="R1, E1, TODO1..." />
+        </div>
+        <div class="form-row">
+          <label for="newLineNumber">line_number</label>
+          <input id="newLineNumber" placeholder="210 or L210-225" />
+        </div>
+        <div class="form-row">
+          <label for="newCategory">comment_category</label>
+          <select id="newCategory">
+            <option value="editorial">editorial</option>
+            <option value="major">major</option>
+            <option value="minor" selected>minor</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="newVerbatim">verbatim_comment</label>
+          <textarea id="newVerbatim" placeholder="Comment or personal to-do task"></textarea>
+        </div>
+        <div class="form-row">
+          <label for="newResponse">response_text (required if completed)</label>
+          <textarea id="newResponse" placeholder="Optional at creation"></textarea>
+        </div>
+        <div class="form-row">
+          <label><input id="newCompleted" type="checkbox" /> Completed</label>
+        </div>
+        <div class="detail-actions">
+          <button id="saveNewTicketBtn" class="primary" type="button">Create Ticket</button>
+          <button id="cancelNewTicketBtn" type="button">Cancel</button>
+        </div>
+      </div>
+    </div>
 
     <footer class="statusbar">
       <span id="statusMessage">Ready</span>

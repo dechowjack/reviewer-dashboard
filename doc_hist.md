@@ -29,6 +29,15 @@
 - Added README setup/run/usage/import format/sorting/macOS Dock launcher instructions.
 - Added light/dark theme toggle with localStorage persistence.
 - Added README section for initializing this folder as a git repository and pushing to a remote.
+- Added `Makefile` targets (`make icon`, `make launcher`) for macOS app icon and launcher creation.
+- Added `scripts/make_icon.sh` for custom Reviewer Ticket Dashboard icon generation.
+- Added `scripts/build_macos_launcher.sh` and `startup.command` for a Dock-able macOS launcher app.
+- Added manual ticket creation:
+  - New `Add Ticket` button and modal form in UI
+  - New backend endpoint `POST /api/manuscripts/{manuscript_id}/tickets`
+  - Uses existing sort/validation rules and manuscript scoping
+  - Supports creating OPEN or COMPLETED (completed still requires non-empty response_text)
+- Added README backup section clarifying storage and manual DB copy command.
 
 ## Verification Notes
 

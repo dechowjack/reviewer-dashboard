@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 .venv/
 data/reviewer_dashboard.db
+dist/
+assets/icons/*.iconset/

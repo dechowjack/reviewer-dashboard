@@ -15,6 +15,7 @@ const createManuscriptBtn = document.getElementById("createManuscriptBtn");
 const renameManuscriptBtn = document.getElementById("renameManuscriptBtn");
 const importFileInput = document.getElementById("importFile");
 const importBtn = document.getElementById("importBtn");
+const addTicketBtn = document.getElementById("addTicketBtn");
 const searchInput = document.getElementById("searchInput");
 const reviewerFilter = document.getElementById("reviewerFilter");
 const categoryFilter = document.getElementById("categoryFilter");
@@ -26,6 +27,16 @@ const statusMessage = document.getElementById("statusMessage");
 const nextOpenBtn = document.getElementById("nextOpenBtn");
 const prevOpenBtn = document.getElementById("prevOpenBtn");
 const themeToggleBtn = document.getElementById("themeToggleBtn");
+const newTicketModal = document.getElementById("newTicketModal");
+const newTicketError = document.getElementById("newTicketError");
+const newReviewerId = document.getElementById("newReviewerId");
+const newLineNumber = document.getElementById("newLineNumber");
+const newCategory = document.getElementById("newCategory");
+const newVerbatim = document.getElementById("newVerbatim");
+const newResponse = document.getElementById("newResponse");
+const newCompleted = document.getElementById("newCompleted");
+const saveNewTicketBtn = document.getElementById("saveNewTicketBtn");
+const cancelNewTicketBtn = document.getElementById("cancelNewTicketBtn");
 
 const THEME_KEY = "reviewer_dashboard_theme";
 
@@ -53,6 +64,60 @@ function toggleTheme() {
   const next = current === "dark" ? "light" : "dark";
   localStorage.setItem(THEME_KEY, next);
   applyTheme(next);
+}
+
+function resetNewTicketForm() {
+  newTicketError.textContent = "";
+  newReviewerId.value = "";
+  newLineNumber.value = "";
+  newCategory.value = "minor";
+  newVerbatim.value = "";
+  newResponse.value = "";
+  newCompleted.checked = false;
+}
+
+function openNewTicketModal() {
+  resetNewTicketForm();
+  newTicketModal.classList.remove("hidden");
+  newReviewerId.focus();
+}
+
+function closeNewTicketModal() {
+  newTicketModal.classList.add("hidden");
+}
+
+async function createTicket() {
+  const payload = {
+    reviewer_id: newReviewerId.value.trim(),
+    line_number: newLineNumber.value.trim(),
+    comment_category: newCategory.value,
+    verbatim_comment: newVerbatim.value.trim(),
+    response_text: newResponse.value,
+    status: newCompleted.checked ? "COMPLETED" : "OPEN",
+  };
+
+  if (payload.status === "COMPLETED" && !payload.response_text.trim()) {
+    newTicketError.textContent = "response_text is required before completion.";
+    return;
+  }
+
+  try {
+    const created = await request(`/api/manuscripts/${state.manuscriptId}/tickets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const createdId = created.ticket.id;
+    closeNewTicketModal();
+    await loadTickets(false);
+    if (state.tickets.some((ticket) => ticket.id === createdId)) {
+      selectTicket(createdId);
+    }
+    setStatus(`Created ticket #${createdId}`);
+  } catch (err) {
+    newTicketError.textContent = err.message;
+    setStatus(err.message, true);
+  }
 }
 
 async function request(url, options = {}) {
@@ -421,6 +486,14 @@ function wireEvents() {
   createManuscriptBtn.addEventListener("click", createManuscript);
   renameManuscriptBtn.addEventListener("click", renameManuscript);
   importBtn.addEventListener("click", importTickets);
+  addTicketBtn.addEventListener("click", openNewTicketModal);
+  saveNewTicketBtn.addEventListener("click", createTicket);
+  cancelNewTicketBtn.addEventListener("click", closeNewTicketModal);
+  newTicketModal.addEventListener("click", (event) => {
+    if (event.target === newTicketModal) {
+      closeNewTicketModal();
+    }
+  });
 
   const filterHandler = async () => {
     updateFilterState();
@@ -437,6 +510,11 @@ function wireEvents() {
   themeToggleBtn.addEventListener("click", toggleTheme);
 
   window.addEventListener("keydown", async (event) => {
+    if (event.key === "Escape" && !newTicketModal.classList.contains("hidden")) {
+      event.preventDefault();
+      closeNewTicketModal();
+      return;
+    }
     if (keyboardTargetIsInput(event.target)) return;
     if (event.key === "n" || event.key === "N") {
       event.preventDefault();

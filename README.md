@@ -24,6 +24,7 @@ A local FastAPI + SQLite dashboard for importing reviewer comments from CSV/XLSX
 - Reopen flow:
   - `Reopen` action moves a completed ticket back to `OPEN`.
 - Import supports `.csv` and `.xlsx` with required 4-column format.
+- Manual ticket creation via `Add Ticket` button (useful for missed reviewer comments or personal to-do tickets).
 - All imported fields remain editable after import (including completed tickets).
 - Multiple manuscripts:
   - Select manuscript from dropdown
@@ -159,15 +160,46 @@ git remote add origin <your-repo-url>
 git push -u origin main
 ```
 
+## App Icon + macOS Launcher (One-Command Targets)
+
+Generate a simple custom app icon:
+
+```bash
+make icon
+```
+
+- Primary output: `assets/icons/reviewer_dashboard_1024.png`
+- If `iconutil` works in your macOS environment, it also generates `assets/icons/reviewer_dashboard.icns`.
+- If `iconutil` fails, launcher build automatically falls back to the PNG icon.
+
+Build launcher app bundle into `dist/`:
+
+```bash
+make launcher
+```
+
+Install launcher to `~/Applications` and pin to Dock:
+
+```bash
+INSTALL_TO_APPS=1 ./scripts/build_macos_launcher.sh
+```
+
+Quick local build only (no install):
+
+```bash
+INSTALL_TO_APPS=0 ./scripts/build_macos_launcher.sh
+```
+
 ## Usage
 
 1. Start app with `./run.sh`
 2. (Optional) Create a new manuscript from top toolbar
 3. Select manuscript
 4. Import CSV/XLSX using `Import`
-5. Click cards to edit ticket details in right panel
-6. Add `response_text` before marking completed
-7. Use `Next Open Ticket` / `Previous Open Ticket` for workflow
+5. (Optional) Add manual tickets using `Add Ticket`
+6. Click cards to edit ticket details in right panel
+7. Add `response_text` before marking completed
+8. Use `Next Open Ticket` / `Previous Open Ticket` for workflow
 
 ## Completion and Editing Behavior
 
@@ -224,3 +256,13 @@ open http://127.0.0.1:8000
 - Next/Previous open behavior works from open/completed/no-selection cases
 - Data persists after server restart
 - Manuscript switching isolates tickets by manuscript
+
+## Backups
+
+- Primary storage is SQLite at `data/reviewer_dashboard.db`.
+- This app does not currently create automatic timestamped backups.
+- To back up tickets manually, copy the DB file:
+
+```bash
+cp data/reviewer_dashboard.db data/reviewer_dashboard.backup.db
+```
