@@ -24,6 +24,11 @@ A local FastAPI + SQLite dashboard for importing reviewer comments from CSV/XLSX
 - Reopen flow:
   - `Reopen` action moves a completed ticket back to `OPEN`.
 - Import supports `.csv` and `.xlsx` with required 4-column format.
+- Markdown export per manuscript (non-CSV):
+  - includes all tickets in sorted order
+  - excludes `TODO` tickets by default
+  - includes status, reviewer/editor/todo ID, verbatim comment
+  - includes response text for completed tickets
 - Manual ticket creation via `Add Ticket` button (useful for missed reviewer comments or personal to-do tickets).
 - All imported fields remain editable after import (including completed tickets).
 - Multiple manuscripts:
@@ -126,7 +131,29 @@ Global ticket sort order:
 3. `line_number_sort` ascending
 4. `created_at` ascending
 
-## Run Locally (One Command)
+## Run Modes
+
+### macOS Desktop App (Recommended)
+
+```bash
+make icon
+```
+
+Build the standalone `.app` (webview wrapper around existing FastAPI backend):
+
+```bash
+make desktop-build
+```
+
+Run from source with native window (no packaging):
+
+```bash
+make desktop
+```
+
+The desktop launcher starts the same local server automatically on a free port and opens a native window.
+
+### Web Server (Existing)
 
 ```bash
 ./run.sh
@@ -161,7 +188,7 @@ git remote add origin <your-repo-url>
 git push -u origin main
 ```
 
-## App Icon + macOS Launcher (One-Command Targets)
+## App Icon + macOS Packaging
 
 Generate a simple custom app icon:
 
@@ -171,36 +198,61 @@ make icon
 
 - Primary output: `assets/icons/reviewer_dashboard_1024.png`
 - If `iconutil` works in your macOS environment, it also generates `assets/icons/reviewer_dashboard.icns`.
-- If `iconutil` fails, launcher build automatically falls back to the PNG icon.
+- If `iconutil` fails, build scripts fall back to the PNG icon.
 
-Build launcher app bundle into `dist/`:
+Build desktop `.app` bundle into `dist/`:
 
 ```bash
-make launcher
+make desktop-build
 ```
 
-Install launcher to `~/Applications` and pin to Dock:
+Build command example:
 
 ```bash
-INSTALL_TO_APPS=1 ./scripts/build_macos_launcher.sh
+./scripts/build_macos_desktop_app.sh
 ```
 
-Quick local build only (no install):
+Build a distributable DMG (recommended to share with coworkers):
 
 ```bash
-INSTALL_TO_APPS=0 ./scripts/build_macos_launcher.sh
+make desktop-dmg
+```
+
+This creates `dist/Reviewer Ticket Dashboard.dmg` which is install-ready (drag app to Applications).
+
+## Database migration for desktop mode
+
+Desktop mode stores data in:
+
+- `~/Library/Application Support/Reviewer Ticket Dashboard/reviewer_dashboard.db`
+
+On first launch in desktop mode, if that file does not exist and `data/reviewer_dashboard.db` exists, the app copies it once into the app-support location.
+
+To override the DB path (web or desktop mode):
+
+```bash
+export REVIEWER_DASHBOARD_DB_PATH=/your/custom/path/reviewer_dashboard.db
+```
+
+To explicitly keep legacy web mode DB behavior:
+
+```bash
+export REVIEWER_DASHBOARD_STANDALONE=0
 ```
 
 ## Usage
 
-1. Start app with `./run.sh`
+1. Run local:
+   - Desktop: `make desktop`
+   - Web: `./run.sh`
 2. (Optional) Create a new manuscript from top toolbar
 3. Select manuscript
 4. Import CSV/XLSX using `Import`
-5. (Optional) Add manual tickets using `Add Ticket`
-6. Click cards to edit ticket details in right panel
-7. Add `response_text` before marking completed
-8. Use `Next Open Ticket` / `Previous Open Ticket` for workflow
+5. Export a markdown report using `Export Markdown`
+6. (Optional) Add manual tickets using `Add Ticket`
+7. Click cards to edit ticket details in right panel
+8. Add `response_text` before marking completed
+9. Use `Next Open Ticket` / `Previous Open Ticket` for workflow
 
 ## Completion and Editing Behavior
 
@@ -217,36 +269,7 @@ INSTALL_TO_APPS=0 ./scripts/build_macos_launcher.sh
 - Wraps around at the end/start.
 - If no matching open ticket exists: shows `No open tickets 🎉`.
 
-## macOS Dock Launcher Options
-
-### Option 1: Chrome/Edge “Install app”
-
-1. Start dashboard with `./run.sh`
-2. Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in Chrome or Edge
-3. In browser menu, choose `Install app` (or `Create shortcut` + `Open as window`)
-4. Launch it from Applications and keep it in Dock
-
-Note: this creates an app-like launcher, but the local server still needs to be running.
-
-### Option 2: Automator Application
-
-1. Open Automator and create a new `Application`
-2. Add `Run Shell Script` action
-3. Use script like:
-
-```bash
-cd /Users/jldechow/Documents/Codex/reviewer-dashboard
-./run.sh
-```
-
-4. Save as `Reviewer Ticket Dashboard.app`
-5. Add to Dock
-
-Alternative Automator script to only open URL (server must already be running):
-
-```bash
-open http://127.0.0.1:8000
-```
+The `make launcher` and Automator/browser-install options remain in the repo as legacy references.
 
 ## Verification Checklist
 
@@ -260,10 +283,12 @@ open http://127.0.0.1:8000
 
 ## Backups
 
-- Primary storage is SQLite at `data/reviewer_dashboard.db`.
+- Primary storage is:
+  - Web mode: `data/reviewer_dashboard.db`
+  - Desktop mode: `~/Library/Application Support/Reviewer Ticket Dashboard/reviewer_dashboard.db`
 - This app does not currently create automatic timestamped backups.
 - To back up tickets manually, copy the DB file:
 
 ```bash
-cp data/reviewer_dashboard.db data/reviewer_dashboard.backup.db
+cp ~/Library/Application\ Support/Reviewer\ Ticket\ Dashboard/reviewer_dashboard.db reviewer_dashboard.backup.db
 ```

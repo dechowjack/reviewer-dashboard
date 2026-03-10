@@ -15,6 +15,7 @@ const createManuscriptBtn = document.getElementById("createManuscriptBtn");
 const renameManuscriptBtn = document.getElementById("renameManuscriptBtn");
 const importFileInput = document.getElementById("importFile");
 const importBtn = document.getElementById("importBtn");
+const exportMdBtn = document.getElementById("exportMdBtn");
 const addTicketBtn = document.getElementById("addTicketBtn");
 const searchInput = document.getElementById("searchInput");
 const reviewerFilter = document.getElementById("reviewerFilter");
@@ -434,6 +435,12 @@ async function importTickets() {
   }
 }
 
+function exportMarkdown() {
+  const url = `/api/manuscripts/${state.manuscriptId}/export.md`;
+  window.location.href = url;
+  setStatus("Downloading markdown export...");
+}
+
 function updateFilterState() {
   state.filters.search = searchInput.value.trim();
   state.filters.reviewer_id = reviewerFilter.value;
@@ -486,6 +493,7 @@ function wireEvents() {
   createManuscriptBtn.addEventListener("click", createManuscript);
   renameManuscriptBtn.addEventListener("click", renameManuscript);
   importBtn.addEventListener("click", importTickets);
+  exportMdBtn.addEventListener("click", exportMarkdown);
   addTicketBtn.addEventListener("click", openNewTicketModal);
   saveNewTicketBtn.addEventListener("click", createTicket);
   cancelNewTicketBtn.addEventListener("click", closeNewTicketModal);

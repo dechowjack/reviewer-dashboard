@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from openpyxl import load_workbook
@@ -26,8 +26,9 @@ REVIEWER_RE = re.compile(r"^R(\d+)$", re.IGNORECASE)
 EDITOR_RE = re.compile(r"^E(\d+)$", re.IGNORECASE)
 
 app = FastAPI(title="Reviewer Ticket Dashboard")
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-templates = Jinja2Templates(directory="app/templates")
+BASE_DIR = Path(__file__).resolve().parent
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 def now_iso() -> str:
@@ -169,6 +170,30 @@ def query_tickets(
     with get_conn() as conn:
         rows = conn.execute(sql, params).fetchall()
     return [dict(row) for row in rows]
+
+
+def format_ticket_markdown(ticket: dict[str, Any]) -> str:
+    lines = [
+        f"## Ticket #{ticket['id']}",
+        f"- ID: `{ticket['reviewer_id']}`",
+        f"- Status: **{ticket['status']}**",
+        f"- Line: `{ticket['line_number_display']}`",
+        f"- Category: `{ticket['comment_category']}`",
+        "",
+        "### Verbatim Comment",
+        ticket["verbatim_comment"].strip() or "_(empty)_",
+    ]
+    if ticket["status"] == "COMPLETED":
+        response_text = (ticket.get("response_text") or "").strip()
+        lines.extend(
+            [
+                "",
+                "### Response",
+                response_text if response_text else "_(empty)_",
+            ]
+        )
+    lines.extend(["", "---", ""])
+    return "\n".join(lines)
 
 
 def get_filter_values(manuscript_id: int) -> dict[str, list[str]]:
@@ -327,6 +352,49 @@ def list_tickets(
     tickets = query_tickets(manuscript_id, search, reviewer_id, comment_category, status)
     filter_values = get_filter_values(manuscript_id)
     return {"tickets": tickets, "filters": filter_values}
+
+
+@app.get("/api/manuscripts/{manuscript_id}/export.md")
+def export_tickets_markdown(
+    manuscript_id: int,
+    include_todo: bool = Query(default=False),
+) -> Response:
+    ensure_manuscript_exists(manuscript_id)
+    with get_conn() as conn:
+        manuscript = conn.execute(
+            "SELECT id, name FROM manuscripts WHERE id = ?",
+            (manuscript_id,),
+        ).fetchone()
+    if not manuscript:
+        raise HTTPException(status_code=404, detail="Manuscript not found")
+
+    tickets = query_tickets(manuscript_id)
+    if not include_todo:
+        tickets = [ticket for ticket in tickets if not str(ticket["reviewer_id"]).upper().startswith("TODO")]
+    export_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", manuscript["name"]).strip("_") or "manuscript"
+    filename = f"{safe_name}_tickets_export.md"
+
+    doc_lines = [
+        f"# Reviewer Ticket Export: {manuscript['name']}",
+        "",
+        f"- Exported: {export_time}",
+        f"- Total tickets: {len(tickets)}",
+        f"- TODO tickets included: {'yes' if include_todo else 'no'}",
+        "",
+    ]
+    if tickets:
+        doc_lines.extend(format_ticket_markdown(ticket) for ticket in tickets)
+    else:
+        doc_lines.append("_No tickets found for this manuscript._")
+        doc_lines.append("")
+
+    content = "\n".join(doc_lines)
+    return Response(
+        content=content,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.post("/api/manuscripts/{manuscript_id}/import")
