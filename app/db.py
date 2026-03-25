@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sqlite3
 import shutil
+import sys
 from pathlib import Path
 
 
@@ -14,12 +15,33 @@ def _legacy_db_path() -> Path:
     return _project_root() / "data" / "reviewer_dashboard.db"
 
 
+def _app_name() -> str:
+    return "Reviewer Ticket Dashboard"
+
+
+def _documents_dir() -> Path:
+    return Path.home() / "Documents"
+
+
+def _appdata_dir() -> Path:
+    appdata = os.getenv("APPDATA")
+    if appdata:
+        return Path(appdata).expanduser()
+    return Path.home() / "AppData" / "Roaming"
+
+
 def _app_support_db_path() -> Path:
-    return Path.home() / "Library" / "Application Support" / "Reviewer Ticket Dashboard" / "reviewer_dashboard.db"
+    if sys.platform == "darwin":
+        base_dir = Path.home() / "Library" / "Application Support"
+    elif sys.platform.startswith("win"):
+        base_dir = _appdata_dir()
+    else:
+        base_dir = Path.home() / ".local" / "share"
+    return base_dir / _app_name() / "reviewer_dashboard.db"
 
 
 def _documents_db_path() -> Path:
-    return Path.home() / "Documents" / "reviewer-ticket-dashboard" / "reviewer_dashboard.db"
+    return _documents_dir() / "reviewer-ticket-dashboard" / "reviewer_dashboard.db"
 
 
 def _is_standalone_mode() -> bool:

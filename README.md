@@ -1,166 +1,90 @@
 # Reviewer Ticket Dashboard
 
-Reviewer Ticket Dashboard is a local macOS desktop app for turning reviewer comments from CSV/XLSX into editable tickets with response tracking, manuscript separation, and Markdown export.
+Reviewer Ticket Dashboard is a local desktop app for managing reviewer comments as tickets, tracking responses, and exporting manuscript-ready notes.
 
-## macOS Only
+## 1. Platform Setup
 
-This project currently targets macOS only.
+This project now has platform-specific setup paths.
 
-- The supported installable output is a macOS `.app` bundled inside a `.dmg`.
-- The packaging scripts rely on macOS tools such as `hdiutil` and `iconutil`.
-- The current sharing/distribution path is: build the DMG on a Mac, then have coworkers drag the app into `/Applications`.
+- macOS is the current stable desktop path.
+- Windows packaging is being developed on `windows-dev`.
+- If you only want to use the app, prefer downloading the packaged app for your platform instead of building from source.
 
-If you are looking for the older browser-first localhost workflow, treat it as legacy. The desktop app is now the primary product.
+## 2. Clone The Right Branch
 
-## What It Does
+Choose the branch that matches what you are doing:
 
-- Import reviewer comments from `.csv` or `.xlsx`
-- Organize work by manuscript
-- Track tickets in `OPEN` and `COMPLETED`
-- Require non-empty `response_text` before completion
-- Reopen completed tickets
-- Add manual tickets
-- Search and filter tickets
-- Jump between open tickets with next/previous navigation
-- Export manuscript responses to Markdown
-- Store data locally in SQLite
+- `main` for the current stable repo state
+- `mac-dev` for ongoing macOS desktop development
+- `windows-dev` for Windows executable work
 
-## Quick Start
+Example:
 
-### Option 1: Use the packaged app
+```bash
+git clone https://github.com/dechowjack/reviewer-dashboard.git
+cd reviewer-dashboard
+git checkout windows-dev
+```
 
-This is the recommended path for coworkers.
+If you are not developing, you may not need to clone the repo at all.
+
+## 3. Install And Run
+
+### 3a. macOS
+
+Recommended for most users:
 
 1. Download `Reviewer Ticket Dashboard.dmg`
 2. Open the DMG
 3. Drag `Reviewer Ticket Dashboard.app` into `/Applications`
-4. Launch the app from Applications
+4. Launch the app
 
-### Option 2: Run from source on macOS
+If you need to build from source on macOS:
 
 ```bash
-git clone <your-repo-url>
-cd reviewer-dashboard
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 make desktop
 ```
 
-This starts the local backend automatically and opens the app in a native macOS window.
-
-## Build the App
-
-From a macOS machine:
+To build the packaged app:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
 make desktop-build
-```
-
-This creates:
-
-- `dist/Reviewer Ticket Dashboard.app`
-
-To build the DMG for sharing:
-
-```bash
 make desktop-dmg
 ```
 
-This creates:
+### 3b. Windows
 
-- `dist/Reviewer Ticket Dashboard.dmg`
+Target end-state:
 
-## Features
+1. Download `Reviewer Ticket Dashboard.exe`
+2. Run the `.exe`
 
-- Two ticket states: `OPEN` and `COMPLETED`
-- Editable fields:
-  - `reviewer_id`
-  - `line_number`
-  - `verbatim_comment`
-  - `comment_category`
-  - `response_text`
-- Manuscript create/select/rename workflow
-- CSV/XLSX import using a fixed four-column schema
-- Markdown export per manuscript
-- TODO-first sort behavior
-- Theme toggle
+Current status:
 
-## Import Format
+- Windows packaging is still in progress.
+- On this branch, the expected build output is `dist\Reviewer Ticket Dashboard\Reviewer Ticket Dashboard.exe`.
+- The Windows build flow still needs real-machine verification.
 
-Import files must use this exact column order:
+If you are testing the Windows build from source:
 
-1. `reviewer_id`
-2. `line_number`
-3. `verbatim_comment`
-4. `comment_category`
-
-Example:
-
-```csv
-reviewer_id,line_number,verbatim_comment,comment_category
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_desktop_app.ps1
 ```
 
-Accepted `comment_category` values:
+## 4. More Documentation
 
-- `editorial`
-- `major`
-- `minor`
+The detailed documentation has been moved to [documentation.md](/Users/jldechow/Documents/Codex/reviewer-dashboard/documentation.md).
 
-`line_number` may be numeric or a range-like string such as `210-225` or `L210-225`. The first integer is used for sorting and the original value is preserved for display.
+That file covers:
 
-## Data Storage
-
-Desktop mode stores the database at:
-
-- `~/Documents/reviewer-ticket-dashboard/reviewer_dashboard.db`
-
-On first launch in standalone desktop mode, the app can migrate existing data from:
-
-1. `~/Library/Application Support/Reviewer Ticket Dashboard/reviewer_dashboard.db`
-2. `data/reviewer_dashboard.db`
-
-To override the database path:
-
-```bash
-export REVIEWER_DASHBOARD_DB_PATH=/your/custom/path/reviewer_dashboard.db
-```
-
-Manual backup example:
-
-```bash
-cp ~/Documents/reviewer-ticket-dashboard/reviewer_dashboard.db reviewer_dashboard.backup.db
-```
-
-## Troubleshooting
-
-If the desktop app opens and immediately closes, check:
-
-- `~/Library/Logs/Reviewer Ticket Dashboard/desktop-startup.log`
-
-To override the log path:
-
-```bash
-export REVIEWER_DASHBOARD_LOG_PATH=/your/path/desktop-startup.log
-```
-
-## Repo Layout
-
-- `app/main.py` - FastAPI app and ticket workflow logic
-- `app/desktop.py` - native desktop launcher
-- `app/db.py` - SQLite setup and access
-- `app/templates/index.html` - main UI template
-- `app/static/app.js` - client-side interactions
-- `app/static/styles.css` - styling
-- `scripts/build_macos_desktop_app.sh` - `.app` builder
-- `scripts/package_macos_dmg.sh` - `.dmg` packager
-- `sample_data/sample_comments.csv` - example import file
-
-## Legacy Notes
-
-- The browser/localhost workflow is no longer the primary way this project is presented.
-- Older browser-launcher assets have been moved under `archive/`.
-- `run.sh` is retained only as a legacy developer convenience for direct web-server use.
+- app features and workflow
+- import format and sorting rules
+- local data storage paths
+- troubleshooting and logs
+- repo layout and legacy notes

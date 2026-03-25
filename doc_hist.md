@@ -68,3 +68,16 @@
 - Removed the legacy `make launcher` target from the top-level `Makefile`.
 - Tightened `.gitignore` to exclude `.DS_Store` and `.pyinstaller-build/`.
 - Prepared legacy browser-launcher assets to live under `archive/` instead of the main repo surface.
+- Started Windows packaging groundwork on `windows-dev`:
+  - made desktop DB and startup log paths platform-aware
+  - added `scripts/build_windows_desktop_app.ps1`
+  - added `make windows-build`
+  - updated `README.md` to mark Windows packaging as work in progress
+- Split documentation into:
+  - a simpler onboarding-focused `README.md`
+  - a more detailed `documentation.md`
+- Restructured `README.md` around:
+  - platform-specific install/setup
+  - choosing the correct branch
+  - simple macOS and Windows setup paths
+  - a pointer to detailed documentation

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import socket
+import sys
 import traceback
 import threading
 from datetime import datetime, timezone
@@ -9,6 +10,30 @@ from contextlib import closing
 from pathlib import Path
 
 import uvicorn
+
+
+def _app_name() -> str:
+    return "Reviewer Ticket Dashboard"
+
+
+def _log_path() -> Path:
+    override = os.getenv("REVIEWER_DASHBOARD_LOG_PATH")
+    if override:
+        return Path(override).expanduser()
+
+    if sys.platform == "darwin":
+        base_dir = Path.home() / "Library" / "Logs"
+    elif sys.platform.startswith("win"):
+        local_appdata = os.getenv("LOCALAPPDATA")
+        if local_appdata:
+            base_dir = Path(local_appdata).expanduser()
+        else:
+            base_dir = Path.home() / "AppData" / "Local"
+        base_dir = base_dir / _app_name() / "Logs"
+    else:
+        base_dir = Path.home() / ".local" / "state" / "reviewer-ticket-dashboard"
+
+    return base_dir / "desktop-startup.log"
 
 
 def _find_free_port(start_port: int = 50000, end_port: int = 65000) -> int:
@@ -38,12 +63,7 @@ def _wait_for_server(port: int, timeout_s: float = 12.0) -> None:
 
 
 def _log_startup_error(message: str, exc: BaseException | None = None) -> None:
-    log_path = Path(
-        os.getenv(
-            "REVIEWER_DASHBOARD_LOG_PATH",
-            Path.home() / "Library" / "Logs" / "Reviewer Ticket Dashboard" / "desktop-startup.log",
-        )
-    )
+    log_path = _log_path()
     try:
         log_path.parent.mkdir(parents=True, exist_ok=True)
         with log_path.open("a", encoding="utf-8") as handle:
