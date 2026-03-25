@@ -40,8 +40,31 @@
 - Added README backup section clarifying storage and manual DB copy command.
 - Updated sorting so `TODO` reviewer IDs appear first.
 - Added startup sort-key recalculation so existing tickets follow new TODO-first ordering immediately.
+- Added Markdown export feature for current manuscript:
+  - Endpoint: `GET /api/manuscripts/{manuscript_id}/export.md`
+  - Includes all tickets with status, reviewer/editor/todo ID, verbatim comment, and response for completed tickets
+  - Added `Export Markdown` toolbar button in UI.
+- Updated Markdown export to exclude `TODO` tickets by default (`include_todo=true` query param can include them).
+- Added desktop wrapper approach for standalone macOS usage:
+  - Added `app/desktop.py` with embedded webview launcher.
+  - Added `make desktop` and `make desktop-build`.
+  - Added `scripts/build_macos_desktop_app.sh` to package `.app` with PyInstaller.
+- Added macOS distributor workflow:
+  - Added `scripts/package_macos_dmg.sh` and `make desktop-dmg` to produce a distributable `.dmg`.
 
 ## Verification Notes
 
 - Static syntax compile check passed: `python3 -m compileall app`.
 - Runtime dependency install could not be completed in this environment due restricted network access.
+
+## 2026-03-25
+
+- Reframed the repository documentation around the macOS desktop app as the primary product.
+- Rewrote `README.md` to emphasize:
+  - macOS-only support
+  - DMG-based install/share workflow
+  - running and building the desktop app from source
+  - legacy status of the browser/localhost workflow
+- Removed the legacy `make launcher` target from the top-level `Makefile`.
+- Tightened `.gitignore` to exclude `.DS_Store` and `.pyinstaller-build/`.
+- Prepared legacy browser-launcher assets to live under `archive/` instead of the main repo surface.

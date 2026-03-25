@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ARCHIVE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "${ARCHIVE_DIR}/../.." && pwd)"
 APP_NAME="${APP_NAME:-Reviewer Ticket Dashboard}"
 OUT_DIR="${OUT_DIR:-$ROOT_DIR/dist}"
 APP_PATH="$OUT_DIR/$APP_NAME.app"
@@ -70,7 +71,7 @@ set -euo pipefail
 APP_URL="$APP_URL"
 PROJECT_ROOT="$ROOT_DIR"
 LOG_PATH="$LOG_PATH"
-STARTUP_COMMAND="$ROOT_DIR/startup.command"
+STARTUP_COMMAND="$ARCHIVE_DIR/startup.command"
 
 if command -v curl >/dev/null 2>&1 && curl -fsS "\${APP_URL}/" >/dev/null 2>&1; then
   open "\$APP_URL"

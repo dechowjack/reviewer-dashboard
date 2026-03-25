@@ -1,9 +1,54 @@
 from __future__ import annotations
 
+import os
 import sqlite3
+import shutil
 from pathlib import Path
 
-DB_PATH = Path("data/reviewer_dashboard.db")
+
+def _project_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def _legacy_db_path() -> Path:
+    return _project_root() / "data" / "reviewer_dashboard.db"
+
+
+def _app_support_db_path() -> Path:
+    return Path.home() / "Library" / "Application Support" / "Reviewer Ticket Dashboard" / "reviewer_dashboard.db"
+
+
+def _documents_db_path() -> Path:
+    return Path.home() / "Documents" / "reviewer-ticket-dashboard" / "reviewer_dashboard.db"
+
+
+def _is_standalone_mode() -> bool:
+    return os.getenv("REVIEWER_DASHBOARD_STANDALONE", "").lower() in {"1", "true", "yes", "on"}
+
+
+def _resolve_db_path() -> Path:
+    override = os.getenv("REVIEWER_DASHBOARD_DB_PATH")
+    if override:
+        return Path(override).expanduser()
+
+    legacy_db = _legacy_db_path()
+    if _is_standalone_mode():
+        docs_db = _documents_db_path()
+        app_support_db = _app_support_db_path()
+
+        if not docs_db.exists():
+            if app_support_db.exists():
+                docs_db.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(app_support_db, docs_db)
+            elif legacy_db.exists():
+                docs_db.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(legacy_db, docs_db)
+        return docs_db
+
+    return legacy_db
+
+
+DB_PATH = _resolve_db_path()
 
 
 def get_conn() -> sqlite3.Connection:
