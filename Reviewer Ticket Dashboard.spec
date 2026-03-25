@@ -1,8 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_submodules
 
-hiddenimports = ['webview']
+hiddenimports = ['webview', 'openpyxl']
 hiddenimports += collect_submodules('app')
+hiddenimports += collect_submodules('openpyxl')
+hiddenimports += collect_submodules('webview')
 
 
 a = Analysis(
@@ -36,7 +38,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['/Users/jldechow/Documents/Codex/reviewer-dashboard/assets/icons/reviewer_dashboard_1024.png'],
+    icon=['/Users/jldechow/Documents/Codex/reviewer-dashboard/assets/icons/reviewer_dashboard.icns'],
 )
 coll = COLLECT(
     exe,
@@ -50,6 +52,6 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='Reviewer Ticket Dashboard.app',
-    icon='/Users/jldechow/Documents/Codex/reviewer-dashboard/assets/icons/reviewer_dashboard_1024.png',
+    icon='/Users/jldechow/Documents/Codex/reviewer-dashboard/assets/icons/reviewer_dashboard.icns',
     bundle_identifier=None,
 )

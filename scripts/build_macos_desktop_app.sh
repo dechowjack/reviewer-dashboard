@@ -11,6 +11,18 @@ if ! command -v pyinstaller >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! python3 - <<'PY'
+import importlib.util
+import sys
+
+sys.exit(0 if importlib.util.find_spec("openpyxl") else 1)
+PY
+then
+  echo "Missing runtime dependency for desktop build: openpyxl"
+  echo "Install it in this environment: pip install -r requirements.txt"
+  exit 1
+fi
+
 ICON_PATH="${ROOT_DIR}/assets/icons/reviewer_dashboard.icns"
 if [[ ! -f "$ICON_PATH" ]]; then
   ICON_PATH="${ROOT_DIR}/assets/icons/reviewer_dashboard_1024.png"
@@ -30,7 +42,10 @@ pyinstaller \
   --add-data "$ROOT_DIR/app/static:app/static" \
   --add-data "$ROOT_DIR/app/templates:app/templates" \
   --collect-submodules app \
+  --collect-submodules openpyxl \
+  --collect-submodules webview \
   --hidden-import webview \
+  --hidden-import openpyxl \
   --clean \
   --noconfirm \
   --windowed \

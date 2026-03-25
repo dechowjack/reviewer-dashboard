@@ -56,3 +56,15 @@
 
 - Static syntax compile check passed: `python3 -m compileall app`.
 - Runtime dependency install could not be completed in this environment due restricted network access.
+
+## 2026-03-25
+
+- Reframed the repository documentation around the macOS desktop app as the primary product.
+- Rewrote `README.md` to emphasize:
+  - macOS-only support
+  - DMG-based install/share workflow
+  - running and building the desktop app from source
+  - legacy status of the browser/localhost workflow
+- Removed the legacy `make launcher` target from the top-level `Makefile`.
+- Tightened `.gitignore` to exclude `.DS_Store` and `.pyinstaller-build/`.
+- Prepared legacy browser-launcher assets to live under `archive/` instead of the main repo surface.

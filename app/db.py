@@ -18,6 +18,10 @@ def _app_support_db_path() -> Path:
     return Path.home() / "Library" / "Application Support" / "Reviewer Ticket Dashboard" / "reviewer_dashboard.db"
 
 
+def _documents_db_path() -> Path:
+    return Path.home() / "Documents" / "reviewer-ticket-dashboard" / "reviewer_dashboard.db"
+
+
 def _is_standalone_mode() -> bool:
     return os.getenv("REVIEWER_DASHBOARD_STANDALONE", "").lower() in {"1", "true", "yes", "on"}
 
@@ -29,11 +33,17 @@ def _resolve_db_path() -> Path:
 
     legacy_db = _legacy_db_path()
     if _is_standalone_mode():
-        app_db = _app_support_db_path()
-        if not app_db.exists() and legacy_db.exists():
-            app_db.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(legacy_db, app_db)
-        return app_db
+        docs_db = _documents_db_path()
+        app_support_db = _app_support_db_path()
+
+        if not docs_db.exists():
+            if app_support_db.exists():
+                docs_db.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(app_support_db, docs_db)
+            elif legacy_db.exists():
+                docs_db.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(legacy_db, docs_db)
+        return docs_db
 
     return legacy_db
 

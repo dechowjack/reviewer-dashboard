@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import os
 import socket
+import traceback
 import threading
+from datetime import datetime, timezone
 from contextlib import closing
+from pathlib import Path
 
 import uvicorn
 
@@ -34,39 +37,71 @@ def _wait_for_server(port: int, timeout_s: float = 12.0) -> None:
     raise TimeoutError("Server did not start in time.")
 
 
+def _log_startup_error(message: str, exc: BaseException | None = None) -> None:
+    log_path = Path(
+        os.getenv(
+            "REVIEWER_DASHBOARD_LOG_PATH",
+            Path.home() / "Library" / "Logs" / "Reviewer Ticket Dashboard" / "desktop-startup.log",
+        )
+    )
+    try:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("a", encoding="utf-8") as handle:
+            handle.write(f"[{datetime.now(timezone.utc).isoformat()}Z] {message}\n")
+            if exc is not None:
+                handle.write("".join(traceback.format_exception(exc.__class__, exc, exc.__traceback__)))
+            else:
+                handle.write("No exception object provided.\n")
+            handle.write("-" * 80 + "\n")
+    except Exception:
+        pass
+
+
+def _stop_server(server: uvicorn.Server | None, thread: threading.Thread | None) -> None:
+    if server is not None:
+        server.should_exit = True
+    if thread is not None and thread.is_alive():
+        thread.join(timeout=2)
+
+
 def main() -> None:
     # Standalone mode uses app-local storage and triggers a one-time migration
     # from data/reviewer_dashboard.db when present.
     os.environ.setdefault("REVIEWER_DASHBOARD_STANDALONE", "1")
 
-    from app.main import app
-
-    port = _find_free_port()
-    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
-    server = uvicorn.Server(config)
-    thread = threading.Thread(target=server.run, daemon=True)
-    thread.start()
-
-    _wait_for_server(port)
+    server: uvicorn.Server | None = None
+    thread: threading.Thread | None = None
 
     try:
-        import webview
-    except Exception as exc:  # pragma: no cover
-        server.should_exit = True
-        thread.join(timeout=2)
-        raise RuntimeError("pywebview is required for desktop mode. Install with: pip install pywebview") from exc
+        from app.main import app
 
-    webview.create_window(
-        title="Reviewer Ticket Dashboard",
-        url=f"http://127.0.0.1:{port}",
-        width=1440,
-        height=920,
-        min_size=(1180, 760),
-    )
-    webview.start()
+        port = _find_free_port()
+        config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
+        server = uvicorn.Server(config)
+        thread = threading.Thread(target=server.run, daemon=True)
+        thread.start()
 
-    server.should_exit = True
-    thread.join(timeout=2)
+        _wait_for_server(port, timeout_s=25.0)
+
+        try:
+            import webview
+        except Exception as exc:  # pragma: no cover
+            raise RuntimeError("pywebview is required for desktop mode. Install with: pip install pywebview") from exc
+
+        webview.create_window(
+            title="Reviewer Ticket Dashboard",
+            url=f"http://127.0.0.1:{port}",
+            width=1440,
+            height=920,
+            min_size=(1180, 760),
+        )
+        webview.start()
+    except Exception as exc:
+        _stop_server(server, thread)
+        _log_startup_error("Desktop app failed to start", exc)
+        raise
+    finally:
+        _stop_server(server, thread)
 
 
 if __name__ == "__main__":

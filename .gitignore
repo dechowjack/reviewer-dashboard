@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 .venv/
+.DS_Store
+.pyinstaller-build/
 data/reviewer_dashboard.db
 dist/
 assets/icons/*.iconset/

@@ -11,8 +11,6 @@ from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from openpyxl import load_workbook
-
 from .db import ensure_default_manuscript, get_conn, init_db
 
 REQUIRED_IMPORT_COLUMNS = [
@@ -115,6 +113,18 @@ def normalize_ticket_row(row: dict[str, Any]) -> dict[str, Any]:
         "verbatim_comment": verbatim_comment,
         "comment_category": category,
     }
+
+
+def _load_openpyxl():
+    try:
+        from openpyxl import load_workbook
+
+        return load_workbook
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(
+            status_code=500,
+            detail="XLSX upload is unavailable because the `openpyxl` dependency is missing.",
+        ) from exc
 
 
 def query_tickets(
@@ -242,6 +252,7 @@ def parse_csv_upload(data: bytes) -> list[dict[str, Any]]:
 
 
 def parse_xlsx_upload(data: bytes) -> list[dict[str, Any]]:
+    load_workbook = _load_openpyxl()
     workbook = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
     sheet = workbook.active
     rows = list(sheet.iter_rows(values_only=True))

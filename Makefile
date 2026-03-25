@@ -1,12 +1,9 @@
 SHELL := /bin/bash
 
-.PHONY: icon launcher desktop desktop-build desktop-dmg
+.PHONY: icon desktop desktop-build desktop-dmg
 
 icon:
 	./scripts/make_icon.sh
-
-launcher: icon
-	./scripts/build_macos_launcher.sh
 
 desktop:
 	python3 -m app.desktop

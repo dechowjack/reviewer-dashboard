@@ -1,294 +1,166 @@
 # Reviewer Ticket Dashboard
 
-A local FastAPI + SQLite dashboard for importing reviewer comments from CSV/XLSX and working them as Jira-like tickets on a two-column Kanban board.
+Reviewer Ticket Dashboard is a local macOS desktop app for turning reviewer comments from CSV/XLSX into editable tickets with response tracking, manuscript separation, and Markdown export.
 
-## Features (v1)
+## macOS Only
 
-- Two statuses and columns:
-  - `OPEN`
-  - `COMPLETED`
-- Ticket cards show:
-  - `reviewer_id`
-  - `line_number` (display value)
-  - `comment_category`
-  - preview of `verbatim_comment`
-- Right-side detail panel with editable fields:
+This project currently targets macOS only.
+
+- The supported installable output is a macOS `.app` bundled inside a `.dmg`.
+- The packaging scripts rely on macOS tools such as `hdiutil` and `iconutil`.
+- The current sharing/distribution path is: build the DMG on a Mac, then have coworkers drag the app into `/Applications`.
+
+If you are looking for the older browser-first localhost workflow, treat it as legacy. The desktop app is now the primary product.
+
+## What It Does
+
+- Import reviewer comments from `.csv` or `.xlsx`
+- Organize work by manuscript
+- Track tickets in `OPEN` and `COMPLETED`
+- Require non-empty `response_text` before completion
+- Reopen completed tickets
+- Add manual tickets
+- Search and filter tickets
+- Jump between open tickets with next/previous navigation
+- Export manuscript responses to Markdown
+- Store data locally in SQLite
+
+## Quick Start
+
+### Option 1: Use the packaged app
+
+This is the recommended path for coworkers.
+
+1. Download `Reviewer Ticket Dashboard.dmg`
+2. Open the DMG
+3. Drag `Reviewer Ticket Dashboard.app` into `/Applications`
+4. Launch the app from Applications
+
+### Option 2: Run from source on macOS
+
+```bash
+git clone <your-repo-url>
+cd reviewer-dashboard
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+make desktop
+```
+
+This starts the local backend automatically and opens the app in a native macOS window.
+
+## Build the App
+
+From a macOS machine:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+make desktop-build
+```
+
+This creates:
+
+- `dist/Reviewer Ticket Dashboard.app`
+
+To build the DMG for sharing:
+
+```bash
+make desktop-dmg
+```
+
+This creates:
+
+- `dist/Reviewer Ticket Dashboard.dmg`
+
+## Features
+
+- Two ticket states: `OPEN` and `COMPLETED`
+- Editable fields:
   - `reviewer_id`
   - `line_number`
   - `verbatim_comment`
   - `comment_category`
   - `response_text`
-  - Completed checkbox
-- Completion validation:
-  - A ticket cannot be marked `COMPLETED` unless `response_text` is non-empty after trim.
-- Reopen flow:
-  - `Reopen` action moves a completed ticket back to `OPEN`.
-- Import supports `.csv` and `.xlsx` with required 4-column format.
-- Markdown export per manuscript (non-CSV):
-  - includes all tickets in sorted order
-  - excludes `TODO` tickets by default
-  - includes status, reviewer/editor/todo ID, verbatim comment
-  - includes response text for completed tickets
-- Manual ticket creation via `Add Ticket` button (useful for missed reviewer comments or personal to-do tickets).
-- All imported fields remain editable after import (including completed tickets).
-- Multiple manuscripts:
-  - Select manuscript from dropdown
-  - Create manuscript (name)
-  - Rename manuscript
-- Search/filter:
-  - Search across `verbatim_comment` and `response_text`
-  - Filter by `reviewer_id`, `comment_category`, `status`
-- Next/previous open workflow:
-  - `Next Open Ticket` button (`N`)
-  - `Previous Open Ticket` button (`Shift+N` or `P`)
-  - Respects current manuscript, search text, reviewer filter, and category filter.
-  - Does **not** use status filter (it always navigates open tickets).
-- Theme toggle:
-  - Toolbar button switches light/dark themes.
-  - Theme preference is saved in browser local storage.
-- Local persistence in SQLite:
-  - `data/reviewer_dashboard.db`
+- Manuscript create/select/rename workflow
+- CSV/XLSX import using a fixed four-column schema
+- Markdown export per manuscript
+- TODO-first sort behavior
+- Theme toggle
 
-## Tech Stack
+## Import Format
 
-- Python 3.10+
-- FastAPI
-- SQLite (`sqlite3`)
-- Jinja2 templates
-- Minimal vanilla JavaScript
-- `openpyxl` for XLSX import
-
-## Project Structure
-
-- `app/main.py` - FastAPI app, API routes, import parsing, sorting, validation, ticket workflow logic.
-- `app/db.py` - SQLite connection and schema initialization.
-- `app/templates/index.html` - Main dashboard view.
-- `app/static/app.js` - UI interactions, filters, save/edit actions, next/prev open navigation.
-- `app/static/styles.css` - Jira-like minimal styling.
-- `sample_data/sample_comments.csv` - Example import file.
-- `run.sh` - One-command local runner.
-
-## Database Schema
-
-### manuscripts
-
-- `id` INTEGER PK
-- `name` TEXT UNIQUE NOT NULL
-- `created_at` TEXT
-
-### tickets
-
-- `id` INTEGER PK
-- `manuscript_id` INTEGER FK -> manuscripts.id
-- `reviewer_id` TEXT
-- `reviewer_group_sort` INTEGER
-- `reviewer_num_sort` INTEGER
-- `line_number_display` TEXT
-- `line_number_sort` INTEGER
-- `verbatim_comment` TEXT
-- `comment_category` TEXT CHECK in (`editorial`,`major`,`minor`)
-- `response_text` TEXT
-- `status` TEXT CHECK in (`OPEN`,`COMPLETED`)
-- `created_at` TEXT
-- `updated_at` TEXT
-
-## Import Format (Required)
-
-Import file columns must be in this exact order:
+Import files must use this exact column order:
 
 1. `reviewer_id`
 2. `line_number`
 3. `verbatim_comment`
 4. `comment_category`
 
-Example header:
+Example:
 
 ```csv
 reviewer_id,line_number,verbatim_comment,comment_category
 ```
 
-Rules:
+Accepted `comment_category` values:
 
-- `reviewer_id` is a short string (`R1`, `R2`, `E1`, etc.).
-- `line_number` parsing:
-  - Numeric (e.g., `210`) -> used directly.
-  - Range/string (e.g., `210-225`, `L210-225`, `L210–225`) -> first integer is used for sorting (`line_number_sort`), original text is preserved as display.
-- `comment_category` accepted values (case-insensitive on import):
-  - `editorial`
-  - `major`
-  - `minor`
+- `editorial`
+- `major`
+- `minor`
 
-## Sorting Rules
+`line_number` may be numeric or a range-like string such as `210-225` or `L210-225`. The first integer is used for sorting and the original value is preserved for display.
 
-Global ticket sort order:
+## Data Storage
 
-1. Reviewer group:
-  - `TODO`-flagged first (`reviewer_id` starts with `TODO`, case-insensitive)
-  - Reviewers next: `^R\d+$`
-  - Unknown/other IDs next (not matching TODO/R/E)
-  - Editors last: `^E\d+$`
-2. Within group: numeric ID (`R1 < R2 < R10`, `E1 < E2`)
-3. `line_number_sort` ascending
-4. `created_at` ascending
+Desktop mode stores the database at:
 
-## Run Modes
+- `~/Documents/reviewer-ticket-dashboard/reviewer_dashboard.db`
 
-### macOS Desktop App (Recommended)
+On first launch in standalone desktop mode, the app can migrate existing data from:
 
-```bash
-make icon
-```
+1. `~/Library/Application Support/Reviewer Ticket Dashboard/reviewer_dashboard.db`
+2. `data/reviewer_dashboard.db`
 
-Build the standalone `.app` (webview wrapper around existing FastAPI backend):
-
-```bash
-make desktop-build
-```
-
-Run from source with native window (no packaging):
-
-```bash
-make desktop
-```
-
-The desktop launcher starts the same local server automatically on a free port and opens a native window.
-
-### Web Server (Existing)
-
-```bash
-./run.sh
-```
-
-Then open:
-
-- [http://127.0.0.1:8000](http://127.0.0.1:8000)
-
-`run.sh` will:
-
-1. Create `.venv` if missing
-2. Install pinned dependencies from `requirements.txt`
-3. Start uvicorn on `127.0.0.1:8000`
-
-## Git Setup (Initialize This Folder as a Repo)
-
-If this folder is not yet a git repository, run:
-
-```bash
-cd /Users/jldechow/Documents/Codex/reviewer-dashboard
-git init
-git add .
-git commit -m "Initial commit: reviewer ticket dashboard v1"
-```
-
-Optional remote setup:
-
-```bash
-git branch -M main
-git remote add origin <your-repo-url>
-git push -u origin main
-```
-
-## App Icon + macOS Packaging
-
-Generate a simple custom app icon:
-
-```bash
-make icon
-```
-
-- Primary output: `assets/icons/reviewer_dashboard_1024.png`
-- If `iconutil` works in your macOS environment, it also generates `assets/icons/reviewer_dashboard.icns`.
-- If `iconutil` fails, build scripts fall back to the PNG icon.
-
-Build desktop `.app` bundle into `dist/`:
-
-```bash
-make desktop-build
-```
-
-Build command example:
-
-```bash
-./scripts/build_macos_desktop_app.sh
-```
-
-Build a distributable DMG (recommended to share with coworkers):
-
-```bash
-make desktop-dmg
-```
-
-This creates `dist/Reviewer Ticket Dashboard.dmg` which is install-ready (drag app to Applications).
-
-## Database migration for desktop mode
-
-Desktop mode stores data in:
-
-- `~/Library/Application Support/Reviewer Ticket Dashboard/reviewer_dashboard.db`
-
-On first launch in desktop mode, if that file does not exist and `data/reviewer_dashboard.db` exists, the app copies it once into the app-support location.
-
-To override the DB path (web or desktop mode):
+To override the database path:
 
 ```bash
 export REVIEWER_DASHBOARD_DB_PATH=/your/custom/path/reviewer_dashboard.db
 ```
 
-To explicitly keep legacy web mode DB behavior:
+Manual backup example:
 
 ```bash
-export REVIEWER_DASHBOARD_STANDALONE=0
+cp ~/Documents/reviewer-ticket-dashboard/reviewer_dashboard.db reviewer_dashboard.backup.db
 ```
 
-## Usage
+## Troubleshooting
 
-1. Run local:
-   - Desktop: `make desktop`
-   - Web: `./run.sh`
-2. (Optional) Create a new manuscript from top toolbar
-3. Select manuscript
-4. Import CSV/XLSX using `Import`
-5. Export a markdown report using `Export Markdown`
-6. (Optional) Add manual tickets using `Add Ticket`
-7. Click cards to edit ticket details in right panel
-8. Add `response_text` before marking completed
-9. Use `Next Open Ticket` / `Previous Open Ticket` for workflow
+If the desktop app opens and immediately closes, check:
 
-## Completion and Editing Behavior
+- `~/Library/Logs/Reviewer Ticket Dashboard/desktop-startup.log`
 
-- `response_text` is required to set `COMPLETED`.
-- Validation blocks completion and shows an error.
-- Completed tickets stay editable.
-- Reopen is explicit via `Reopen` button or unchecking completed state and saving.
-
-## Next Open Ticket Behavior
-
-- If no ticket is selected: selects first matching open ticket.
-- If selected is open: moves to next/previous open ticket after/before it.
-- If selected is completed: finds next/previous open ticket relative to selected ticket in global sort order.
-- Wraps around at the end/start.
-- If no matching open ticket exists: shows `No open tickets 🎉`.
-
-The `make launcher` and Automator/browser-install options remain in the repo as legacy references.
-
-## Verification Checklist
-
-- Import succeeds for CSV and XLSX with exact columns
-- Sorting order follows reviewer-group/numeric/line/created rules
-- Completion blocked when `response_text` is blank
-- Completed tickets editable and reopenable
-- Next/Previous open behavior works from open/completed/no-selection cases
-- Data persists after server restart
-- Manuscript switching isolates tickets by manuscript
-
-## Backups
-
-- Primary storage is:
-  - Web mode: `data/reviewer_dashboard.db`
-  - Desktop mode: `~/Library/Application Support/Reviewer Ticket Dashboard/reviewer_dashboard.db`
-- This app does not currently create automatic timestamped backups.
-- To back up tickets manually, copy the DB file:
+To override the log path:
 
 ```bash
-cp ~/Library/Application\ Support/Reviewer\ Ticket\ Dashboard/reviewer_dashboard.db reviewer_dashboard.backup.db
+export REVIEWER_DASHBOARD_LOG_PATH=/your/path/desktop-startup.log
 ```
+
+## Repo Layout
+
+- `app/main.py` - FastAPI app and ticket workflow logic
+- `app/desktop.py` - native desktop launcher
+- `app/db.py` - SQLite setup and access
+- `app/templates/index.html` - main UI template
+- `app/static/app.js` - client-side interactions
+- `app/static/styles.css` - styling
+- `scripts/build_macos_desktop_app.sh` - `.app` builder
+- `scripts/package_macos_dmg.sh` - `.dmg` packager
+- `sample_data/sample_comments.csv` - example import file
+
+## Legacy Notes
+
+- The browser/localhost workflow is no longer the primary way this project is presented.
+- Older browser-launcher assets have been moved under `archive/`.
+- `run.sh` is retained only as a legacy developer convenience for direct web-server use.
