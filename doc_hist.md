@@ -81,3 +81,18 @@
   - choosing the correct branch
   - simple macOS and Windows setup paths
   - a pointer to detailed documentation
+
+## 2026-03-26
+
+- Reorganized the documented branch model around:
+  - `main` as the shared app source of truth
+  - `mac` as the macOS local `.app` build branch
+  - `windows` as the Windows local app build branch
+  - `linux` as the Linux browser/local-web launch branch
+- Updated `README.md` to describe the new `mac` / `windows` / `linux` branch contract.
+- Updated `documentation.md` to:
+  - document `main` as shared app/runtime ownership
+  - position Linux as the current browser/local-web path
+  - remove DMG packaging from the active repo layout description
+- Removed `desktop-dmg` from the top-level `Makefile` so the supported shared build surface no longer advertises DMG generation.
+- Kept the shared FastAPI/templates/static runtime as active app infrastructure rather than treating it as legacy browser-only code.

@@ -1,6 +1,6 @@
 # Reviewer Ticket Dashboard
 
-Reviewer Ticket Dashboard is a local desktop app for managing reviewer comments as tickets, tracking responses, and exporting manuscript-ready notes. The intended setup is source-first: clone the repo, check out the branch for your platform, and build the app locally.
+Reviewer Ticket Dashboard is a local app for managing reviewer comments as tickets, tracking responses, and exporting manuscript-ready notes. `main` holds the shared app code and documentation, while the platform branches carry the minimum OS-specific build or launch utilities needed to run the same product locally.
 
 ## 1. Choose The Right Branch
 
@@ -13,23 +13,28 @@ cd reviewer-dashboard
 
 Then check out the branch that matches what you are trying to do:
 
-- `main` for the live macOS build
-- `mac-dev` for ongoing macOS development
-- `windows-dev` for Windows build work
+- `main` for the shared app source and documentation
+- `mac` for the macOS local `.app` build path
+- `windows` for the Windows local app build path
+- `linux` for the Linux browser/local-web launch path
 
 Examples:
 
 ```bash
-git checkout main
+git checkout mac
 ```
 
 ```bash
-git checkout windows-dev
+git checkout windows
+```
+
+```bash
+git checkout linux
 ```
 
 ## 2. Build And Run On macOS
 
-Use `main` if you want the current live macOS build. `mac-dev` currently tracks the same code for macOS development work.
+Use `mac` for the macOS local `.app` build path.
 
 ```bash
 python3 -m venv .venv
@@ -42,7 +47,7 @@ This launches the local desktop app from source.
 
 ## 3. Build On Windows
 
-Use `windows-dev` for the Windows build flow. The Windows build tooling does not live on `main`.
+Use `windows` for the Windows build flow.
 
 ```powershell
 python -m venv .venv
@@ -57,7 +62,20 @@ This produces a local Windows desktop build from source at:
 dist\Reviewer Ticket Dashboard\Reviewer Ticket Dashboard.exe
 ```
 
-## 4. More Documentation
+## 4. Run On Linux
+
+Use `linux` for the current Linux path. Linux support is browser/local-web for now rather than a native desktop wrapper.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+./run.sh
+```
+
+This launches the same app locally and serves it on `127.0.0.1:8000`.
+
+## 5. More Documentation
 
 Detailed app and project documentation lives in [documentation.md](/Users/jldechow/Documents/Codex/reviewer-dashboard/documentation.md).
 

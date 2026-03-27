@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: icon desktop desktop-build desktop-dmg
+.PHONY: icon desktop desktop-build
 
 icon:
 	./scripts/make_icon.sh
@@ -10,6 +10,3 @@ desktop:
 
 desktop-build: icon
 	./scripts/build_macos_desktop_app.sh
-
-desktop-dmg: desktop-build
-	./scripts/package_macos_dmg.sh
