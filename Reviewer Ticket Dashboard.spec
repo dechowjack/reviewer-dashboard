@@ -8,10 +8,10 @@ hiddenimports += collect_submodules('webview')
 
 
 a = Analysis(
-    ['/Users/jldechow/Documents/Codex/reviewer-dashboard/app/desktop.py'],
+    ['C:\\Users\\jldechow\\Documents\\GitHub\\reviewer-dashboard\\app\\desktop.py'],
     pathex=[],
     binaries=[],
-    datas=[('/Users/jldechow/Documents/Codex/reviewer-dashboard/app/static', 'app/static'), ('/Users/jldechow/Documents/Codex/reviewer-dashboard/app/templates', 'app/templates')],
+    datas=[('C:\\Users\\jldechow\\Documents\\GitHub\\reviewer-dashboard\\app\\static', 'app/static'), ('C:\\Users\\jldechow\\Documents\\GitHub\\reviewer-dashboard\\app\\templates', 'app/templates')],
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
@@ -38,7 +38,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['/Users/jldechow/Documents/Codex/reviewer-dashboard/assets/icons/reviewer_dashboard.icns'],
+    icon=['C:\\Users\\jldechow\\Documents\\GitHub\\reviewer-dashboard\\assets\\icons\\reviewer_dashboard.ico'],
 )
 coll = COLLECT(
     exe,
@@ -48,10 +48,4 @@ coll = COLLECT(
     upx=True,
     upx_exclude=[],
     name='Reviewer Ticket Dashboard',
-)
-app = BUNDLE(
-    coll,
-    name='Reviewer Ticket Dashboard.app',
-    icon='/Users/jldechow/Documents/Codex/reviewer-dashboard/assets/icons/reviewer_dashboard.icns',
-    bundle_identifier=None,
 )
