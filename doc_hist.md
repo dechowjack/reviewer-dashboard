@@ -101,3 +101,4 @@
   - updating `windows-build` to call `powershell -NoProfile -File`
   - making the PowerShell build script validate Python and required packages more clearly
   - documenting `Set-ExecutionPolicy -Scope Process RemoteSigned` as the least-invasive fallback when a shell blocks script execution
+- Extended `scripts/make_icon.sh` to generate `assets/icons/reviewer_dashboard.ico` so Windows builds can use a native icon asset.
