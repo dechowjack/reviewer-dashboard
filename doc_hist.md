@@ -96,3 +96,7 @@
   - remove DMG packaging from the active repo layout description
 - Removed `desktop-dmg` from the top-level `Makefile` so the supported shared build surface no longer advertises DMG generation.
 - Kept the shared FastAPI/templates/static runtime as active app infrastructure rather than treating it as legacy browser-only code.
+- Updated `main` README Windows instructions to match the hardened `windows` branch flow:
+  - `powershell -NoProfile -File .\scripts\build_windows_desktop_app.ps1`
+  - `Set-ExecutionPolicy -Scope Process RemoteSigned` as the least-invasive fallback
+- Extended `scripts/make_icon.sh` to generate `assets/icons/reviewer_dashboard.ico` from the shared PNG asset for Windows builds.

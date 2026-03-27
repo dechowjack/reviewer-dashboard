@@ -8,6 +8,7 @@ mkdir -p "$OUT_DIR"
 PNG_1024="$OUT_DIR/reviewer_dashboard_1024.png"
 ICONSET_DIR="$OUT_DIR/reviewer_dashboard.iconset"
 ICNS_OUT="$OUT_DIR/reviewer_dashboard.icns"
+ICO_OUT="$OUT_DIR/reviewer_dashboard.ico"
 SOURCE_PNG="$OUT_DIR/source.png"
 
 if [[ -f "$SOURCE_PNG" ]]; then
@@ -48,4 +49,14 @@ if iconutil -c icns "$ICONSET_DIR" -o "$ICNS_OUT"; then
 else
   echo "Warning: iconutil failed; PNG icon is still available for launcher fallback."
 fi
+
+if magick "$PNG_1024" \
+  -define icon:auto-resize=16,24,32,48,64,128,256 \
+  "$ICO_OUT"
+then
+  echo "Generated: $ICO_OUT"
+else
+  echo "Warning: failed to generate Windows .ico asset."
+fi
+
 echo "Generated: $PNG_1024"
