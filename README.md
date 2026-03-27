@@ -1,45 +1,40 @@
 # Reviewer Ticket Dashboard
 
-Reviewer Ticket Dashboard is a local desktop app for managing reviewer comments as tickets, tracking responses, and exporting manuscript-ready notes.
+Reviewer Ticket Dashboard is a local app for managing reviewer comments as tickets, tracking responses, and exporting manuscript-ready notes. `main` holds the shared app code and documentation, while the platform branches carry the minimum OS-specific build or launch utilities needed to run the same product locally.
 
-## 1. Platform Setup
+## 1. Choose The Right Branch
 
-This project now has platform-specific setup paths.
-
-- macOS is the current stable desktop path.
-- Windows packaging is being developed on `windows-dev`.
-- If you only want to use the app, prefer downloading the packaged app for your platform instead of building from source.
-
-## 2. Clone The Right Branch
-
-Choose the branch that matches what you are doing:
-
-- `main` for the current stable repo state
-- `mac-dev` for ongoing macOS desktop development
-- `windows-dev` for Windows executable work
-
-Example:
+Start by cloning the repository:
 
 ```bash
 git clone https://github.com/dechowjack/reviewer-dashboard.git
 cd reviewer-dashboard
-git checkout windows-dev
 ```
 
-If you are not developing, you may not need to clone the repo at all.
+Then check out the branch that matches what you are trying to do:
 
-## 3. Install And Run
+- `main` for the shared app source and documentation
+- `mac` for the macOS local `.app` build path
+- `windows` for the Windows local app build path
+- `linux` for the Linux browser/local-web launch path
 
-### 3a. macOS
+Examples:
 
-Recommended for most users:
+```bash
+git checkout mac
+```
 
-1. Download `Reviewer Ticket Dashboard.dmg`
-2. Open the DMG
-3. Drag `Reviewer Ticket Dashboard.app` into `/Applications`
-4. Launch the app
+```bash
+git checkout windows
+```
 
-If you need to build from source on macOS:
+```bash
+git checkout linux
+```
+
+## 2. Build And Run On macOS
+
+Use `mac` for the macOS local `.app` build path.
 
 ```bash
 python3 -m venv .venv
@@ -48,27 +43,11 @@ pip install -r requirements.txt
 make desktop
 ```
 
-To build the packaged app:
+This launches the local desktop app from source.
 
-```bash
-make desktop-build
-make desktop-dmg
-```
+## 3. Build On Windows
 
-### 3b. Windows
-
-Target end-state:
-
-1. Download `Reviewer Ticket Dashboard.exe`
-2. Run the `.exe`
-
-Current status:
-
-- Windows packaging is still in progress.
-- On this branch, the expected build output is `dist\Reviewer Ticket Dashboard\Reviewer Ticket Dashboard.exe`.
-- The Windows build flow still needs real-machine verification.
-
-If you are testing the Windows build from source:
+Use `windows` for the Windows build flow.
 
 ```powershell
 python -m venv .venv
@@ -77,12 +56,30 @@ pip install -r requirements.txt
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_desktop_app.ps1
 ```
 
-## 4. More Documentation
+This produces a local Windows desktop build from source at:
 
-The detailed documentation has been moved to [documentation.md](/Users/jldechow/Documents/Codex/reviewer-dashboard/documentation.md).
+```text
+dist\Reviewer Ticket Dashboard\Reviewer Ticket Dashboard.exe
+```
+
+## 4. Run On Linux
+
+Use `linux` for the current Linux path. Linux support is browser/local-web for now rather than a native desktop wrapper.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+./run.sh
+```
+
+This launches the same app locally and serves it on `127.0.0.1:8000`.
+
+## 5. More Documentation
+
+Detailed app and project documentation lives in [documentation.md](/Users/jldechow/Documents/Codex/reviewer-dashboard/documentation.md).
 
 That file covers:
-
 - app features and workflow
 - import format and sorting rules
 - local data storage paths

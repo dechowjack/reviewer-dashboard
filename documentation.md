@@ -4,6 +4,12 @@
 
 Reviewer Ticket Dashboard is a local desktop app for importing reviewer comments from CSV/XLSX, working them as tickets, and exporting manuscript response notes.
 
+Repository model:
+
+- `main` holds the shared app code, shared UI, and shared documentation.
+- `mac` carries the macOS-specific local `.app` build utilities.
+- `windows` carries the Windows-specific local app build utilities.
+- `linux` carries the current Linux browser/local-web launch utilities.
 Core workflow:
 
 1. Create or select a manuscript
@@ -80,6 +86,7 @@ Desktop mode stores the main database in the user Documents folder:
 - macOS: `~/Documents/reviewer-ticket-dashboard/reviewer_dashboard.db`
 - Windows: `%USERPROFILE%\Documents\reviewer-ticket-dashboard\reviewer_dashboard.db`
 
+On Linux, the browser/local-web workflow continues to use the project-local database unless you override it with `REVIEWER_DASHBOARD_DB_PATH`.
 On first launch in standalone desktop mode, the app can migrate existing data from:
 
 1. macOS legacy path: `~/Library/Application Support/Reviewer Ticket Dashboard/reviewer_dashboard.db`
@@ -121,11 +128,15 @@ export REVIEWER_DASHBOARD_LOG_PATH=/your/path/desktop-startup.log
 - `app/static/styles.css` - styling
 - `scripts/build_macos_desktop_app.sh` - macOS `.app` builder
 - `scripts/build_windows_desktop_app.ps1` - Windows `.exe` builder
-- `scripts/package_macos_dmg.sh` - macOS `.dmg` packager
+- `run.sh` - Linux/local browser launcher
 - `sample_data/sample_comments.csv` - example import file
 
-## Legacy Notes
+## Platform Notes
 
-- The browser/localhost workflow is legacy.
+- The shared app runtime is used by all platform branches.
+- macOS and Windows package the same app into local desktop app launches.
+- Linux currently uses the browser/local-web path for the same app behavior.
+
+## Archive Notes
+
 - Older browser-launcher assets live under `archive/`.
-- `run.sh` remains only as a legacy developer convenience.
