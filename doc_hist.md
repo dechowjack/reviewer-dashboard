@@ -102,3 +102,18 @@
   - making the PowerShell build script validate Python and required packages more clearly
   - documenting `Set-ExecutionPolicy -Scope Process RemoteSigned` as the least-invasive fallback when a shell blocks script execution
 - Extended `scripts/make_icon.sh` to generate `assets/icons/reviewer_dashboard.ico` so Windows builds can use a native icon asset.
+
+## 2026-03-27
+
+- Hardened the Windows local workflow for machines where `python` is not on `PATH` or where the project uses a Conda-backed interpreter.
+- Updated `scripts/build_windows_desktop_app.ps1` to resolve Python from:
+  - `python` on `PATH`
+  - an activated virtual environment
+  - the repo `.venv`
+  - an active Conda environment
+  - `py -3`
+- Updated the Windows build script to bundle common Conda runtime DLLs needed by PyInstaller on this machine.
+- Added `scripts/run_windows_desktop_app.ps1` as a Windows source launcher that uses the same interpreter-resolution rules as the build script.
+- Added `windows-run` to the top-level `Makefile`.
+- Updated standalone DB path resolution to fall back to `%APPDATA%` on Windows when the preferred `Documents` location is not writable.
+- Updated `README.md` and `documentation.md` so the documented Windows commands match the working flow verified on this machine.

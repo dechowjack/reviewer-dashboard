@@ -86,6 +86,10 @@ Desktop mode stores the main database in the user Documents folder:
 - macOS: `~/Documents/reviewer-ticket-dashboard/reviewer_dashboard.db`
 - Windows: `%USERPROFILE%\Documents\reviewer-ticket-dashboard\reviewer_dashboard.db`
 
+If that Documents location is not writable on Windows, standalone mode falls back to:
+
+- Windows fallback: `%APPDATA%\Reviewer Ticket Dashboard\reviewer_dashboard.db`
+
 On Linux, the browser/local-web workflow continues to use the project-local database unless you override it with `REVIEWER_DASHBOARD_DB_PATH`.
 On first launch in standalone desktop mode, the app can migrate existing data from:
 
@@ -120,9 +124,12 @@ export REVIEWER_DASHBOARD_LOG_PATH=/your/path/desktop-startup.log
 
 ## Windows Build Notes
 
-- Activate the project virtual environment before running the Windows build script.
-- The supported build command is `powershell -NoProfile -File .\scripts\build_windows_desktop_app.ps1`.
-- If the current PowerShell session blocks script execution, use `Set-ExecutionPolicy -Scope Process RemoteSigned` in that shell and rerun the build command.
+- The simplest Windows source run command is `powershell -ExecutionPolicy RemoteSigned -NoProfile -File .\scripts\run_windows_desktop_app.ps1`.
+- The Windows build command is `powershell -ExecutionPolicy RemoteSigned -NoProfile -File .\scripts\build_windows_desktop_app.ps1`.
+- Both Windows scripts try to resolve Python from `python` on `PATH`, an activated virtual environment, the repo `.venv`, an active Conda environment, or `py -3`.
+- Conda-backed Python installs are supported, but `python.org` Python plus `venv` remains the most predictable option for PyInstaller packaging on Windows.
+- On machines where Windows blocks writes under `Documents`, standalone mode falls back to `%APPDATA%\Reviewer Ticket Dashboard\reviewer_dashboard.db`.
+- If the current PowerShell session blocks script execution, use `Set-ExecutionPolicy -Scope Process RemoteSigned` in that shell and rerun the command.
 - The build output is `dist\Reviewer Ticket Dashboard\Reviewer Ticket Dashboard.exe`.
 - If `assets\icons\reviewer_dashboard.ico` is missing, the build continues without a custom Windows icon.
 
@@ -136,6 +143,7 @@ export REVIEWER_DASHBOARD_LOG_PATH=/your/path/desktop-startup.log
 - `app/static/styles.css` - styling
 - `scripts/build_macos_desktop_app.sh` - macOS `.app` builder
 - `scripts/build_windows_desktop_app.ps1` - Windows `.exe` builder
+- `scripts/run_windows_desktop_app.ps1` - Windows source launcher
 - `run.sh` - Linux/local browser launcher
 - `sample_data/sample_comments.csv` - example import file
 

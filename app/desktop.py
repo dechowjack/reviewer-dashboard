@@ -96,7 +96,15 @@ def main() -> None:
         from app.main import app
 
         port = _find_free_port()
-        config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
+        config = uvicorn.Config(
+            app,
+            host="127.0.0.1",
+            port=port,
+            log_config=None,
+            log_level="warning",
+            access_log=False,
+            use_colors=False,
+        )
         server = uvicorn.Server(config)
         thread = threading.Thread(target=server.run, daemon=True)
         thread.start()

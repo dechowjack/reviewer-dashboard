@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: icon desktop desktop-build windows-build
+.PHONY: icon desktop desktop-build windows-build windows-run
 
 icon:
 	./scripts/make_icon.sh
@@ -13,3 +13,6 @@ desktop-build: icon
 
 windows-build:
 	powershell -NoProfile -File .\\scripts\\build_windows_desktop_app.ps1
+
+windows-run:
+	powershell -NoProfile -File .\\scripts\\run_windows_desktop_app.ps1

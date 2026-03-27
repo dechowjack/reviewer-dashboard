@@ -48,6 +48,14 @@ def _is_standalone_mode() -> bool:
     return os.getenv("REVIEWER_DASHBOARD_STANDALONE", "").lower() in {"1", "true", "yes", "on"}
 
 
+def _ensure_parent_dir(path: Path) -> bool:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return True
+    except OSError:
+        return False
+
+
 def _resolve_db_path() -> Path:
     override = os.getenv("REVIEWER_DASHBOARD_DB_PATH")
     if override:
@@ -58,14 +66,15 @@ def _resolve_db_path() -> Path:
         docs_db = _documents_db_path()
         app_support_db = _app_support_db_path()
 
-        if not docs_db.exists():
-            if app_support_db.exists():
-                docs_db.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(app_support_db, docs_db)
+        preferred_db = docs_db if _ensure_parent_dir(docs_db) else app_support_db
+        _ensure_parent_dir(preferred_db)
+
+        if not preferred_db.exists():
+            if preferred_db != app_support_db and app_support_db.exists():
+                shutil.copy2(app_support_db, preferred_db)
             elif legacy_db.exists():
-                docs_db.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(legacy_db, docs_db)
-        return docs_db
+                shutil.copy2(legacy_db, preferred_db)
+        return preferred_db
 
     return legacy_db
 

@@ -51,25 +51,38 @@ Use `windows` for the Windows build flow.
 
 Prerequisites:
 
-- Python is installed and available on `PATH`
-- your virtual environment is activated
-- `pip install -r requirements.txt` has been run in that environment
+- Python is installed on Windows, either from `python.org` or via Conda
+- `pip install -r requirements.txt` has been run in the environment you want to use
 - Windows PowerShell is available for `powershell -NoProfile -File ...`
+
+Recommended:
+
+- for the most predictable Windows packaging results, use `python.org` Python with a normal `venv`
+- Conda-backed installs are supported, and the Windows scripts will try to resolve Python from the active Conda environment or the repo `.venv`
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-powershell -NoProfile -File .\scripts\build_windows_desktop_app.ps1
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Set-ExecutionPolicy -Scope Process RemoteSigned
+powershell -ExecutionPolicy RemoteSigned -NoProfile -File .\scripts\run_windows_desktop_app.ps1
 ```
 
-This produces a local Windows desktop build from source at:
+This launches the local Windows desktop app from source.
+
+To build the packaged Windows desktop app:
+
+```powershell
+Set-ExecutionPolicy -Scope Process RemoteSigned
+powershell -ExecutionPolicy RemoteSigned -NoProfile -File .\scripts\build_windows_desktop_app.ps1
+```
+
+This produces a local Windows desktop build at:
 
 ```text
 dist\Reviewer Ticket Dashboard\Reviewer Ticket Dashboard.exe
 ```
 
-If your local PowerShell policy blocks script execution in the current shell, use this least-invasive fallback and then rerun the build command:
+If your local PowerShell policy blocks script execution in the current shell, use this least-invasive fallback and then rerun the launch or build command:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process RemoteSigned
@@ -90,7 +103,7 @@ This launches the same app locally and serves it on `127.0.0.1:8000`.
 
 ## 5. More Documentation
 
-Detailed app and project documentation lives in [documentation.md](/Users/jldechow/Documents/Codex/reviewer-dashboard/documentation.md).
+Detailed app and project documentation lives in [documentation.md](C:/Users/jldechow/Documents/GitHub/reviewer-dashboard/documentation.md).
 
 That file covers:
 - app features and workflow
