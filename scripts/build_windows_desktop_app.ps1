@@ -25,7 +25,7 @@ if ($MissingModules.Count -gt 0) {
     throw "Missing required Python packages: $MissingModuleList. Activate your virtual environment and run: pip install -r requirements.txt"
 }
 
-python -m PyInstaller --version *> $null
+$null = python -m PyInstaller --version 2>&1
 if ($LASTEXITCODE -ne 0) {
     throw "PyInstaller is installed incorrectly or unavailable in this Python environment. Activate your virtual environment and run: pip install -r requirements.txt"
 }
