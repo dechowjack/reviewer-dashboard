@@ -118,6 +118,14 @@ To override the log path:
 export REVIEWER_DASHBOARD_LOG_PATH=/your/path/desktop-startup.log
 ```
 
+## Windows Build Notes
+
+- Activate the project virtual environment before running the Windows build script.
+- The supported build command is `powershell -NoProfile -File .\scripts\build_windows_desktop_app.ps1`.
+- If the current PowerShell session blocks script execution, use `Set-ExecutionPolicy -Scope Process RemoteSigned` in that shell and rerun the build command.
+- The build output is `dist\Reviewer Ticket Dashboard\Reviewer Ticket Dashboard.exe`.
+- If `assets\icons\reviewer_dashboard.ico` is missing, the build continues without a custom Windows icon.
+
 ## Repo Layout
 
 - `app/main.py` - FastAPI app and ticket workflow logic

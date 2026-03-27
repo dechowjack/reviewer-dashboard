@@ -49,17 +49,30 @@ This launches the local desktop app from source.
 
 Use `windows` for the Windows build flow.
 
+Prerequisites:
+
+- Python is installed and available on `PATH`
+- your virtual environment is activated
+- `pip install -r requirements.txt` has been run in that environment
+- Windows PowerShell is available for `powershell -NoProfile -File ...`
+
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_desktop_app.ps1
+powershell -NoProfile -File .\scripts\build_windows_desktop_app.ps1
 ```
 
 This produces a local Windows desktop build from source at:
 
 ```text
 dist\Reviewer Ticket Dashboard\Reviewer Ticket Dashboard.exe
+```
+
+If your local PowerShell policy blocks script execution in the current shell, use this least-invasive fallback and then rerun the build command:
+
+```powershell
+Set-ExecutionPolicy -Scope Process RemoteSigned
 ```
 
 ## 4. Run On Linux

@@ -6,13 +6,28 @@ $OutDir = if ($env:OUT_DIR) { $env:OUT_DIR } else { Join-Path $RootDir "dist" }
 $BuildWorkDir = Join-Path $RootDir ".pyinstaller-build"
 $IconPath = Join-Path $RootDir "assets\icons\reviewer_dashboard.ico"
 
-if (-not (Get-Command pyinstaller -ErrorAction SilentlyContinue)) {
-    throw "pyinstaller is required. Install with: pip install pyinstaller"
+if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+    throw "Python is required on PATH. Install Python, activate your virtual environment, and run: pip install -r requirements.txt"
 }
 
-python -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('openpyxl') and importlib.util.find_spec('webview') else 1)"
+$RequiredModules = @("PyInstaller", "openpyxl", "webview")
+$MissingModules = @()
+
+foreach ($Module in $RequiredModules) {
+    python -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('$Module') else 1)"
+    if ($LASTEXITCODE -ne 0) {
+        $MissingModules += $Module
+    }
+}
+
+if ($MissingModules.Count -gt 0) {
+    $MissingModuleList = $MissingModules -join ", "
+    throw "Missing required Python packages: $MissingModuleList. Activate your virtual environment and run: pip install -r requirements.txt"
+}
+
+python -m PyInstaller --version *> $null
 if ($LASTEXITCODE -ne 0) {
-    throw "Missing runtime dependency for desktop build. Install with: pip install -r requirements.txt"
+    throw "PyInstaller is installed incorrectly or unavailable in this Python environment. Activate your virtual environment and run: pip install -r requirements.txt"
 }
 
 if (Test-Path $BuildWorkDir) {
@@ -41,8 +56,10 @@ $PyInstallerArgs = @(
 
 if (Test-Path $IconPath) {
     $PyInstallerArgs = @("--icon", $IconPath) + $PyInstallerArgs
+} else {
+    Write-Host "Windows icon not found at $IconPath. Building without a custom icon."
 }
 
-& pyinstaller @PyInstallerArgs
+python -m PyInstaller @PyInstallerArgs
 
 Write-Host "Built Windows desktop app: $OutDir\$AppName\$AppName.exe"

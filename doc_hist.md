@@ -96,3 +96,8 @@
   - remove DMG packaging from the active repo layout description
 - Removed `desktop-dmg` from the top-level `Makefile` so the supported shared build surface no longer advertises DMG generation.
 - Kept the shared FastAPI/templates/static runtime as active app infrastructure rather than treating it as legacy browser-only code.
+- Hardened the Windows build flow on the `windows` branch by:
+  - removing `ExecutionPolicy Bypass` from the supported build command
+  - updating `windows-build` to call `powershell -NoProfile -File`
+  - making the PowerShell build script validate Python and required packages more clearly
+  - documenting `Set-ExecutionPolicy -Scope Process RemoteSigned` as the least-invasive fallback when a shell blocks script execution

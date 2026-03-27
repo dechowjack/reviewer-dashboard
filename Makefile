@@ -12,4 +12,4 @@ desktop-build: icon
 	./scripts/build_macos_desktop_app.sh
 
 windows-build:
-	pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/build_windows_desktop_app.ps1
+	powershell -NoProfile -File .\\scripts\\build_windows_desktop_app.ps1
