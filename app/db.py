@@ -79,6 +79,7 @@ def init_db() -> None:
                 line_number_sort INTEGER NOT NULL DEFAULT 2147483647,
                 verbatim_comment TEXT NOT NULL,
                 comment_category TEXT NOT NULL CHECK (comment_category IN ('editorial', 'major', 'minor')),
+                manuscript_section TEXT NOT NULL DEFAULT 'Unassigned',
                 response_text TEXT NOT NULL DEFAULT '',
                 status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'COMPLETED')),
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -96,6 +97,28 @@ def init_db() -> None:
                 created_at,
                 id
             );
+            """
+        )
+        columns = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(tickets)").fetchall()
+        }
+        if "manuscript_section" not in columns:
+            conn.execute(
+                "ALTER TABLE tickets ADD COLUMN manuscript_section TEXT NOT NULL DEFAULT 'Unassigned'"
+            )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_tickets_section_sort ON tickets (
+                manuscript_id,
+                status,
+                manuscript_section COLLATE NOCASE,
+                reviewer_group_sort,
+                reviewer_num_sort,
+                line_number_sort,
+                created_at,
+                id
+            )
             """
         )
 

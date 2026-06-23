@@ -19,6 +19,8 @@ REQUIRED_IMPORT_COLUMNS = [
     "verbatim_comment",
     "comment_category",
 ]
+OPTIONAL_IMPORT_COLUMNS = {"section"}
+DEFAULT_SECTION = "Unassigned"
 VALID_CATEGORIES = {"editorial", "major", "minor"}
 REVIEWER_RE = re.compile(r"^R(\d+)$", re.IGNORECASE)
 EDITOR_RE = re.compile(r"^E(\d+)$", re.IGNORECASE)
@@ -61,6 +63,30 @@ def parse_reviewer_sort(reviewer_id: str) -> tuple[int, int]:
     fallback_num_match = re.search(r"(\d+)", value)
     fallback_num = int(fallback_num_match.group(1)) if fallback_num_match else 2_147_483_647
     return 1, fallback_num
+
+
+def normalize_section_value(value: Any) -> str:
+    section = "" if value is None else str(value).strip()
+    return section if section else DEFAULT_SECTION
+
+
+def canonicalize_section(conn, manuscript_id: int, section: Any) -> str:
+    normalized = normalize_section_value(section)
+    if normalized == DEFAULT_SECTION:
+        return DEFAULT_SECTION
+    existing = conn.execute(
+        """
+        SELECT manuscript_section
+        FROM tickets
+        WHERE manuscript_id = ? AND LOWER(manuscript_section) = LOWER(?)
+        ORDER BY id
+        LIMIT 1
+        """,
+        (manuscript_id, normalized),
+    ).fetchone()
+    if existing:
+        return str(existing["manuscript_section"])
+    return normalized
 
 
 def recalculate_reviewer_sort_keys() -> None:
@@ -112,6 +138,7 @@ def normalize_ticket_row(row: dict[str, Any]) -> dict[str, Any]:
         "line_number_sort": line_sort,
         "verbatim_comment": verbatim_comment,
         "comment_category": category,
+        "manuscript_section": normalize_section_value(row.get("section", row.get("manuscript_section", ""))),
     }
 
 
@@ -132,7 +159,9 @@ def query_tickets(
     search: str | None = None,
     reviewer_id: str | None = None,
     comment_category: str | None = None,
+    manuscript_section: str | None = None,
     status: str | None = None,
+    sort: str = "reviewer",
 ) -> list[dict[str, Any]]:
     sql = """
         SELECT
@@ -145,6 +174,7 @@ def query_tickets(
             line_number_sort,
             verbatim_comment,
             comment_category,
+            manuscript_section,
             response_text,
             status,
             created_at,
@@ -164,18 +194,32 @@ def query_tickets(
     if comment_category:
         sql += " AND comment_category = ?"
         params.append(comment_category)
+    if manuscript_section:
+        sql += " AND LOWER(manuscript_section) = LOWER(?)"
+        params.append(normalize_section_value(manuscript_section))
     if status and status in {"OPEN", "COMPLETED"}:
         sql += " AND status = ?"
         params.append(status)
 
-    sql += """
-        ORDER BY
-            reviewer_group_sort ASC,
-            reviewer_num_sort ASC,
-            line_number_sort ASC,
-            created_at ASC,
-            id ASC
-    """
+    if sort == "section":
+        sql += """
+            ORDER BY
+                LOWER(manuscript_section) ASC,
+                reviewer_group_sort ASC,
+                reviewer_num_sort ASC,
+                line_number_sort ASC,
+                created_at ASC,
+                id ASC
+        """
+    else:
+        sql += """
+            ORDER BY
+                reviewer_group_sort ASC,
+                reviewer_num_sort ASC,
+                line_number_sort ASC,
+                created_at ASC,
+                id ASC
+        """
 
     with get_conn() as conn:
         rows = conn.execute(sql, params).fetchall()
@@ -189,6 +233,7 @@ def format_ticket_markdown(ticket: dict[str, Any]) -> str:
         f"- Status: **{ticket['status']}**",
         f"- Line: `{ticket['line_number_display']}`",
         f"- Category: `{ticket['comment_category']}`",
+        f"- Section: `{ticket['manuscript_section']}`",
         "",
         "### Verbatim Comment",
         ticket["verbatim_comment"].strip() or "_(empty)_",
@@ -217,7 +262,63 @@ def get_filter_values(manuscript_id: int) -> dict[str, list[str]]:
             """,
             (manuscript_id,),
         ).fetchall()
-    return {"reviewer_ids": [row["reviewer_id"] for row in reviewer_rows], "categories": sorted(VALID_CATEGORIES)}
+        section_rows = conn.execute(
+            """
+            SELECT t.manuscript_section
+            FROM tickets t
+            JOIN (
+                SELECT LOWER(manuscript_section) AS section_key, MIN(id) AS first_id
+                FROM tickets
+                WHERE manuscript_id = ?
+                GROUP BY LOWER(manuscript_section)
+            ) first_sections ON t.id = first_sections.first_id
+            ORDER BY LOWER(t.manuscript_section), t.manuscript_section
+            """,
+            (manuscript_id,),
+        ).fetchall()
+    return {
+        "reviewer_ids": [row["reviewer_id"] for row in reviewer_rows],
+        "categories": sorted(VALID_CATEGORIES),
+        "sections": [row["manuscript_section"] for row in section_rows],
+    }
+
+
+def import_column_map(header: list[str], file_type: str) -> dict[str, int]:
+    normalized_header = [column.strip().lower() for column in header]
+    seen: set[str] = set()
+    column_map: dict[str, int] = {}
+    for idx, column in enumerate(normalized_header):
+        if not column:
+            raise HTTPException(status_code=400, detail=f"{file_type} column {idx + 1}: header cannot be blank")
+        if column in seen:
+            raise HTTPException(status_code=400, detail=f"{file_type} column '{header[idx]}' is duplicated")
+        seen.add(column)
+        column_map[column] = idx
+
+    missing = [column for column in REQUIRED_IMPORT_COLUMNS if column not in column_map]
+    if missing:
+        required = ", ".join(REQUIRED_IMPORT_COLUMNS)
+        raise HTTPException(
+            status_code=400,
+            detail=f"{file_type} columns must include: {required}; optional: section",
+        )
+
+    allowed = set(REQUIRED_IMPORT_COLUMNS) | OPTIONAL_IMPORT_COLUMNS
+    extra = [header[idx] for idx, column in enumerate(normalized_header) if column not in allowed]
+    if extra:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{file_type} has unsupported column(s): {', '.join(extra)}",
+        )
+    return column_map
+
+
+def row_value(values: list[Any], column_map: dict[str, int], column: str) -> str:
+    idx = column_map.get(column)
+    if idx is None or idx >= len(values):
+        return ""
+    value = values[idx]
+    return "" if value is None else str(value)
 
 
 def parse_csv_upload(data: bytes) -> list[dict[str, Any]]:
@@ -228,24 +329,23 @@ def parse_csv_upload(data: bytes) -> list[dict[str, Any]]:
         raise HTTPException(status_code=400, detail="CSV file is empty")
 
     header = [h.strip() for h in rows[0]]
-    if header != REQUIRED_IMPORT_COLUMNS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"CSV columns must be exactly: {', '.join(REQUIRED_IMPORT_COLUMNS)}",
-        )
+    column_map = import_column_map(header, "CSV")
 
     parsed: list[dict[str, Any]] = []
     for i, row in enumerate(rows[1:], start=2):
         if not any(cell.strip() for cell in row):
             continue
-        if len(row) != 4:
-            raise HTTPException(status_code=400, detail=f"Row {i}: expected 4 columns")
+        if len(row) < len(header):
+            row = row + [""] * (len(header) - len(row))
+        if len(row) > len(header):
+            raise HTTPException(status_code=400, detail=f"Row {i}: expected {len(header)} columns")
         parsed.append(
             {
-                "reviewer_id": row[0],
-                "line_number": row[1],
-                "verbatim_comment": row[2],
-                "comment_category": row[3],
+                "reviewer_id": row_value(row, column_map, "reviewer_id"),
+                "line_number": row_value(row, column_map, "line_number"),
+                "verbatim_comment": row_value(row, column_map, "verbatim_comment"),
+                "comment_category": row_value(row, column_map, "comment_category"),
+                "section": row_value(row, column_map, "section"),
             }
         )
     return parsed
@@ -259,25 +359,22 @@ def parse_xlsx_upload(data: bytes) -> list[dict[str, Any]]:
     if not rows:
         raise HTTPException(status_code=400, detail="XLSX file is empty")
     header = [str(cell).strip() if cell is not None else "" for cell in rows[0]]
-    if header != REQUIRED_IMPORT_COLUMNS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"XLSX columns must be exactly: {', '.join(REQUIRED_IMPORT_COLUMNS)}",
-        )
+    column_map = import_column_map(header, "XLSX")
 
     parsed: list[dict[str, Any]] = []
     for i, row in enumerate(rows[1:], start=2):
         values = list(row)
         if not any(value not in (None, "") for value in values):
             continue
-        if len(values) < 4:
-            raise HTTPException(status_code=400, detail=f"Row {i}: expected 4 columns")
+        if len(values) < len(header):
+            values = values + [None] * (len(header) - len(values))
         parsed.append(
             {
-                "reviewer_id": "" if values[0] is None else str(values[0]),
-                "line_number": "" if values[1] is None else str(values[1]),
-                "verbatim_comment": "" if values[2] is None else str(values[2]),
-                "comment_category": "" if values[3] is None else str(values[3]),
+                "reviewer_id": row_value(values, column_map, "reviewer_id"),
+                "line_number": row_value(values, column_map, "line_number"),
+                "verbatim_comment": row_value(values, column_map, "verbatim_comment"),
+                "comment_category": row_value(values, column_map, "comment_category"),
+                "section": row_value(values, column_map, "section"),
             }
         )
     return parsed
@@ -308,7 +405,7 @@ def home(request: Request, manuscript_id: int | None = None) -> HTMLResponse:
             "request": request,
             "manuscripts": manuscripts,
             "selected_manuscript_id": selected_id,
-            "next_open_behavior": "Next Open Ticket respects current search and filters.",
+            "next_open_behavior": "Next Open Ticket respects current search, filters, and sort mode.",
         },
     )
 
@@ -357,10 +454,20 @@ def list_tickets(
     search: str | None = Query(default=None),
     reviewer_id: str | None = Query(default=None),
     comment_category: str | None = Query(default=None),
+    manuscript_section: str | None = Query(default=None),
     status: str | None = Query(default=None),
+    sort: str = Query(default="reviewer"),
 ) -> dict[str, Any]:
     ensure_manuscript_exists(manuscript_id)
-    tickets = query_tickets(manuscript_id, search, reviewer_id, comment_category, status)
+    tickets = query_tickets(
+        manuscript_id,
+        search,
+        reviewer_id,
+        comment_category,
+        manuscript_section,
+        status,
+        sort,
+    )
     filter_values = get_filter_values(manuscript_id)
     return {"tickets": tickets, "filters": filter_values}
 
@@ -431,6 +538,7 @@ async def import_tickets(manuscript_id: int, file: UploadFile = File(...)) -> di
 
     with get_conn() as conn:
         for row in prepared_rows:
+            section = canonicalize_section(conn, manuscript_id, row["manuscript_section"])
             conn.execute(
                 """
                 INSERT INTO tickets (
@@ -442,11 +550,12 @@ async def import_tickets(manuscript_id: int, file: UploadFile = File(...)) -> di
                     line_number_sort,
                     verbatim_comment,
                     comment_category,
+                    manuscript_section,
                     response_text,
                     status,
                     created_at,
                     updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', 'OPEN', ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', 'OPEN', ?, ?)
                 """,
                 (
                     manuscript_id,
@@ -457,6 +566,7 @@ async def import_tickets(manuscript_id: int, file: UploadFile = File(...)) -> di
                     row["line_number_sort"],
                     row["verbatim_comment"],
                     row["comment_category"],
+                    section,
                     now_iso(),
                     now_iso(),
                 ),
@@ -475,6 +585,7 @@ def create_ticket(manuscript_id: int, payload: dict[str, Any]) -> dict[str, Any]
             "line_number": payload.get("line_number", payload.get("line_number_display", "")),
             "verbatim_comment": payload.get("verbatim_comment", ""),
             "comment_category": payload.get("comment_category", ""),
+            "manuscript_section": payload.get("manuscript_section", payload.get("section", "")),
         }
     )
 
@@ -490,6 +601,7 @@ def create_ticket(manuscript_id: int, payload: dict[str, Any]) -> dict[str, Any]
 
     created = now_iso()
     with get_conn() as conn:
+        section = canonicalize_section(conn, manuscript_id, normalized["manuscript_section"])
         cur = conn.execute(
             """
             INSERT INTO tickets (
@@ -501,11 +613,12 @@ def create_ticket(manuscript_id: int, payload: dict[str, Any]) -> dict[str, Any]
                 line_number_sort,
                 verbatim_comment,
                 comment_category,
+                manuscript_section,
                 response_text,
                 status,
                 created_at,
                 updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 manuscript_id,
@@ -516,6 +629,7 @@ def create_ticket(manuscript_id: int, payload: dict[str, Any]) -> dict[str, Any]
                 normalized["line_number_sort"],
                 normalized["verbatim_comment"],
                 normalized["comment_category"],
+                section,
                 response_text,
                 status,
                 created,
@@ -543,11 +657,14 @@ def update_ticket(ticket_id: int, payload: dict[str, Any]) -> dict[str, Any]:
             raise HTTPException(status_code=404, detail="Ticket not found")
 
         updated = dict(existing)
+        if "section" in payload and "manuscript_section" not in payload:
+            payload["manuscript_section"] = payload["section"]
         for field in [
             "reviewer_id",
             "line_number_display",
             "verbatim_comment",
             "comment_category",
+            "manuscript_section",
             "response_text",
             "status",
         ]:
@@ -570,6 +687,7 @@ def update_ticket(ticket_id: int, payload: dict[str, Any]) -> dict[str, Any]:
         if category not in VALID_CATEGORIES:
             raise HTTPException(status_code=400, detail="comment_category must be editorial, major, or minor")
 
+        section = canonicalize_section(conn, int(existing["manuscript_id"]), updated.get("manuscript_section", ""))
         response_text = str(updated["response_text"])
         status = str(updated.get("status", "OPEN")).upper()
         if status not in {"OPEN", "COMPLETED"}:
@@ -592,6 +710,7 @@ def update_ticket(ticket_id: int, payload: dict[str, Any]) -> dict[str, Any]:
                 line_number_sort = ?,
                 verbatim_comment = ?,
                 comment_category = ?,
+                manuscript_section = ?,
                 response_text = ?,
                 status = ?,
                 updated_at = ?
@@ -605,6 +724,7 @@ def update_ticket(ticket_id: int, payload: dict[str, Any]) -> dict[str, Any]:
                 line_sort,
                 verbatim_comment,
                 category,
+                section,
                 response_text,
                 status,
                 now_iso(),
@@ -624,6 +744,8 @@ def next_open_ticket(
     search: str | None = Query(default=None),
     reviewer_id: str | None = Query(default=None),
     comment_category: str | None = Query(default=None),
+    manuscript_section: str | None = Query(default=None),
+    sort: str = Query(default="reviewer"),
 ) -> JSONResponse:
     ensure_manuscript_exists(manuscript_id)
     if direction not in {"next", "prev"}:
@@ -634,7 +756,9 @@ def next_open_ticket(
         search=search,
         reviewer_id=reviewer_id,
         comment_category=comment_category,
+        manuscript_section=manuscript_section,
         status="OPEN",
+        sort=sort,
     )
 
     if not open_tickets:
@@ -647,7 +771,12 @@ def next_open_ticket(
 
     with get_conn() as conn:
         current_row = conn.execute(
-            "SELECT manuscript_id, reviewer_group_sort, reviewer_num_sort, line_number_sort, created_at, id FROM tickets WHERE id = ?",
+            """
+            SELECT manuscript_id, manuscript_section, reviewer_group_sort, reviewer_num_sort,
+                   line_number_sort, created_at, id
+            FROM tickets
+            WHERE id = ?
+            """,
             (current_ticket_id,),
         ).fetchone()
 
@@ -665,35 +794,27 @@ def next_open_ticket(
             return JSONResponse({"ticket": open_tickets[idx - 1]})
         return JSONResponse({"ticket": open_tickets[-1]})
 
-    current_tuple = (
-        current_row["reviewer_group_sort"],
-        current_row["reviewer_num_sort"],
-        current_row["line_number_sort"],
-        current_row["created_at"],
-        current_row["id"],
-    )
-
-    if direction == "next":
-        for ticket in open_tickets:
-            ticket_tuple = (
-                ticket["reviewer_group_sort"],
-                ticket["reviewer_num_sort"],
-                ticket["line_number_sort"],
-                ticket["created_at"],
-                ticket["id"],
-            )
-            if ticket_tuple > current_tuple:
-                return JSONResponse({"ticket": ticket})
-        return JSONResponse({"ticket": open_tickets[0]})
-
-    for ticket in reversed(open_tickets):
-        ticket_tuple = (
+    def sort_tuple(ticket: dict[str, Any]) -> tuple[Any, ...]:
+        base = (
             ticket["reviewer_group_sort"],
             ticket["reviewer_num_sort"],
             ticket["line_number_sort"],
             ticket["created_at"],
             ticket["id"],
         )
-        if ticket_tuple < current_tuple:
+        if sort == "section":
+            return (str(ticket["manuscript_section"]).lower(),) + base
+        return base
+
+    current_tuple = sort_tuple(dict(current_row))
+
+    if direction == "next":
+        for ticket in open_tickets:
+            if sort_tuple(ticket) > current_tuple:
+                return JSONResponse({"ticket": ticket})
+        return JSONResponse({"ticket": open_tickets[0]})
+
+    for ticket in reversed(open_tickets):
+        if sort_tuple(ticket) < current_tuple:
             return JSONResponse({"ticket": ticket})
     return JSONResponse({"ticket": open_tickets[-1]})

@@ -6,7 +6,9 @@ const state = {
     search: "",
     reviewer_id: "",
     comment_category: "",
+    manuscript_section: "",
     status: "",
+    sort: "reviewer",
   },
 };
 
@@ -20,7 +22,9 @@ const addTicketBtn = document.getElementById("addTicketBtn");
 const searchInput = document.getElementById("searchInput");
 const reviewerFilter = document.getElementById("reviewerFilter");
 const categoryFilter = document.getElementById("categoryFilter");
+const sectionFilter = document.getElementById("sectionFilter");
 const statusFilter = document.getElementById("statusFilter");
+const sortSelect = document.getElementById("sortSelect");
 const openColumn = document.getElementById("openColumn");
 const completedColumn = document.getElementById("completedColumn");
 const detailPane = document.getElementById("detailPane");
@@ -33,6 +37,7 @@ const newTicketError = document.getElementById("newTicketError");
 const newReviewerId = document.getElementById("newReviewerId");
 const newLineNumber = document.getElementById("newLineNumber");
 const newCategory = document.getElementById("newCategory");
+const newSection = document.getElementById("newSection");
 const newVerbatim = document.getElementById("newVerbatim");
 const newResponse = document.getElementById("newResponse");
 const newCompleted = document.getElementById("newCompleted");
@@ -72,6 +77,7 @@ function resetNewTicketForm() {
   newReviewerId.value = "";
   newLineNumber.value = "";
   newCategory.value = "minor";
+  newSection.value = "";
   newVerbatim.value = "";
   newResponse.value = "";
   newCompleted.checked = false;
@@ -92,6 +98,7 @@ async function createTicket() {
     reviewer_id: newReviewerId.value.trim(),
     line_number: newLineNumber.value.trim(),
     comment_category: newCategory.value,
+    manuscript_section: newSection.value.trim(),
     verbatim_comment: newVerbatim.value.trim(),
     response_text: newResponse.value,
     status: newCompleted.checked ? "COMPLETED" : "OPEN",
@@ -163,6 +170,7 @@ function buildTicketCard(ticket) {
       <span>${escapeHtml(ticket.reviewer_id)}</span>
       <span>Line ${escapeHtml(ticket.line_number_display)}</span>
       <span>${escapeHtml(ticket.comment_category)}</span>
+      <span>${escapeHtml(ticket.manuscript_section)}</span>
     </div>
     <div class="ticket-preview">${escapeHtml(ticketPreview(ticket.verbatim_comment))}</div>
   `;
@@ -233,6 +241,11 @@ function renderDetail(ticket) {
     </div>
 
     <div class="form-row">
+      <label for="sectionField">section</label>
+      <input id="sectionField" value="${escapeHtml(ticket.manuscript_section || "")}" />
+    </div>
+
+    <div class="form-row">
       <label for="verbatimField">verbatim_comment</label>
       <textarea id="verbatimField">${escapeHtml(ticket.verbatim_comment)}</textarea>
     </div>
@@ -268,7 +281,9 @@ async function loadTickets(keepSelection = true) {
   if (state.filters.search) params.set("search", state.filters.search);
   if (state.filters.reviewer_id) params.set("reviewer_id", state.filters.reviewer_id);
   if (state.filters.comment_category) params.set("comment_category", state.filters.comment_category);
+  if (state.filters.manuscript_section) params.set("manuscript_section", state.filters.manuscript_section);
   if (state.filters.status) params.set("status", state.filters.status);
+  if (state.filters.sort) params.set("sort", state.filters.sort);
 
   const query = params.toString() ? `?${params.toString()}` : "";
   const payload = await request(`/api/manuscripts/${state.manuscriptId}/tickets${query}`);
@@ -280,6 +295,7 @@ async function loadTickets(keepSelection = true) {
   }
 
   updateReviewerFilter(payload.filters.reviewer_ids);
+  updateSectionFilter(payload.filters.sections);
   renderBoard();
 
   if (state.selectedTicketId) {
@@ -307,6 +323,23 @@ function updateReviewerFilter(reviewerIds) {
   }
 }
 
+function updateSectionFilter(sections) {
+  const prev = state.filters.manuscript_section;
+  sectionFilter.innerHTML = '<option value="">All sections</option>';
+  sections.forEach((section) => {
+    const opt = document.createElement("option");
+    opt.value = section;
+    opt.textContent = section;
+    sectionFilter.appendChild(opt);
+  });
+  if (sections.includes(prev)) {
+    sectionFilter.value = prev;
+  } else {
+    sectionFilter.value = "";
+    state.filters.manuscript_section = "";
+  }
+}
+
 function selectedTicket() {
   return state.tickets.find((ticket) => ticket.id === state.selectedTicketId) || null;
 }
@@ -321,6 +354,7 @@ function currentFormValues() {
   const reviewerId = document.getElementById("reviewerIdField")?.value || "";
   const lineNumber = document.getElementById("lineNumberField")?.value || "";
   const category = document.getElementById("categoryField")?.value || "";
+  const section = document.getElementById("sectionField")?.value || "";
   const verbatim = document.getElementById("verbatimField")?.value || "";
   const response = document.getElementById("responseField")?.value || "";
   const completedChecked = Boolean(document.getElementById("completedField")?.checked);
@@ -328,6 +362,7 @@ function currentFormValues() {
     reviewer_id: reviewerId,
     line_number_display: lineNumber,
     comment_category: category,
+    manuscript_section: section,
     verbatim_comment: verbatim,
     response_text: response,
     status: completedChecked ? "COMPLETED" : "OPEN",
@@ -445,7 +480,9 @@ function updateFilterState() {
   state.filters.search = searchInput.value.trim();
   state.filters.reviewer_id = reviewerFilter.value;
   state.filters.comment_category = categoryFilter.value;
+  state.filters.manuscript_section = sectionFilter.value;
   state.filters.status = statusFilter.value;
+  state.filters.sort = sortSelect.value;
 }
 
 async function navigateOpen(direction) {
@@ -455,6 +492,8 @@ async function navigateOpen(direction) {
   if (state.filters.search) params.set("search", state.filters.search);
   if (state.filters.reviewer_id) params.set("reviewer_id", state.filters.reviewer_id);
   if (state.filters.comment_category) params.set("comment_category", state.filters.comment_category);
+  if (state.filters.manuscript_section) params.set("manuscript_section", state.filters.manuscript_section);
+  if (state.filters.sort) params.set("sort", state.filters.sort);
 
   try {
     const payload = await request(`/api/manuscripts/${state.manuscriptId}/next-open?${params.toString()}`);
@@ -511,7 +550,9 @@ function wireEvents() {
   searchInput.addEventListener("input", filterHandler);
   reviewerFilter.addEventListener("change", filterHandler);
   categoryFilter.addEventListener("change", filterHandler);
+  sectionFilter.addEventListener("change", filterHandler);
   statusFilter.addEventListener("change", filterHandler);
+  sortSelect.addEventListener("change", filterHandler);
 
   nextOpenBtn.addEventListener("click", () => navigateOpen("next"));
   prevOpenBtn.addEventListener("click", () => navigateOpen("prev"));

@@ -9,7 +9,7 @@
   <body>
     <header class="topbar">
       <h1>Reviewer Ticket Dashboard</h1>
-      <p>Sort order: TODO first, then reviewers (`R#`), then unknown IDs, then editors (`E#`).</p>
+      <p>Default sort: TODO first, then reviewers (`R#`), unknown IDs, and editors (`E#`). Section sort is available in the toolbar.</p>
     </header>
 
     <section class="toolbar">
@@ -44,10 +44,17 @@
           <option value="major">major</option>
           <option value="minor">minor</option>
         </select>
+        <select id="sectionFilter">
+          <option value="">All sections</option>
+        </select>
         <select id="statusFilter">
           <option value="">All statuses</option>
           <option value="OPEN">Open</option>
           <option value="COMPLETED">Completed</option>
+        </select>
+        <select id="sortSelect">
+          <option value="reviewer">Reviewer order</option>
+          <option value="section">Section order</option>
         </select>
       </div>
 
@@ -95,6 +102,10 @@
             <option value="major">major</option>
             <option value="minor" selected>minor</option>
           </select>
+        </div>
+        <div class="form-row">
+          <label for="newSection">section</label>
+          <input id="newSection" placeholder="Abstract, Introduction, Results..." />
         </div>
         <div class="form-row">
           <label for="newVerbatim">verbatim_comment</label>

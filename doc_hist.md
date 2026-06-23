@@ -1,5 +1,13 @@
 # Documentation History
 
+## 2026-06-23
+
+- Added free-text manuscript section tags for tickets.
+- Added optional CSV/XLSX `section` import column with `Unassigned` fallback for missing or blank values.
+- Added case-insensitive section grouping, filtering, and section sort mode.
+- Added manual section editing in the ticket detail pane and Add Ticket modal.
+- Updated Markdown export and sample import data to include ticket sections.
+
 ## 2026-02-25
 
 - Initialized `Reviewer Ticket Dashboard` project structure.
