@@ -108,3 +108,9 @@
   - `powershell -NoProfile -File .\scripts\build_windows_desktop_app.ps1`
   - `Set-ExecutionPolicy -Scope Process RemoteSigned` as the least-invasive fallback
 - Extended `scripts/make_icon.sh` to generate `assets/icons/reviewer_dashboard.ico` from the shared PNG asset for Windows builds.
+
+# 2026-06-24
+
+- Replaced desktop-incompatible manuscript name prompts with in-app create and rename dialogs.
+- Added explicit manuscript selection to CSV/XLSX import and permanent ticket deletion with confirmation.
+- Simplified the interface by hiding section entry, display, filtering, sorting, and export output while preserving stored section data and import compatibility.

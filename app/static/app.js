@@ -2,13 +2,13 @@ const state = {
   manuscriptId: Number(window.__INITIAL_MANUSCRIPT_ID__),
   tickets: [],
   selectedTicketId: null,
+  manuscriptModalMode: "create",
+  pendingDeleteTicketId: null,
   filters: {
     search: "",
     reviewer_id: "",
     comment_category: "",
-    manuscript_section: "",
     status: "",
-    sort: "reviewer",
   },
 };
 
@@ -22,9 +22,7 @@ const addTicketBtn = document.getElementById("addTicketBtn");
 const searchInput = document.getElementById("searchInput");
 const reviewerFilter = document.getElementById("reviewerFilter");
 const categoryFilter = document.getElementById("categoryFilter");
-const sectionFilter = document.getElementById("sectionFilter");
 const statusFilter = document.getElementById("statusFilter");
-const sortSelect = document.getElementById("sortSelect");
 const openColumn = document.getElementById("openColumn");
 const completedColumn = document.getElementById("completedColumn");
 const detailPane = document.getElementById("detailPane");
@@ -37,12 +35,30 @@ const newTicketError = document.getElementById("newTicketError");
 const newReviewerId = document.getElementById("newReviewerId");
 const newLineNumber = document.getElementById("newLineNumber");
 const newCategory = document.getElementById("newCategory");
-const newSection = document.getElementById("newSection");
 const newVerbatim = document.getElementById("newVerbatim");
 const newResponse = document.getElementById("newResponse");
 const newCompleted = document.getElementById("newCompleted");
 const saveNewTicketBtn = document.getElementById("saveNewTicketBtn");
 const cancelNewTicketBtn = document.getElementById("cancelNewTicketBtn");
+const manuscriptModal = document.getElementById("manuscriptModal");
+const manuscriptModalTitle = document.getElementById("manuscriptModalTitle");
+const manuscriptModalError = document.getElementById("manuscriptModalError");
+const manuscriptNameInput = document.getElementById("manuscriptNameInput");
+const saveManuscriptBtn = document.getElementById("saveManuscriptBtn");
+const cancelManuscriptBtn = document.getElementById("cancelManuscriptBtn");
+const importModal = document.getElementById("importModal");
+const importModalError = document.getElementById("importModalError");
+const importFileName = document.getElementById("importFileName");
+const importManuscriptSelect = document.getElementById("importManuscriptSelect");
+const importNewNameRow = document.getElementById("importNewNameRow");
+const importNewName = document.getElementById("importNewName");
+const confirmImportBtn = document.getElementById("confirmImportBtn");
+const cancelImportBtn = document.getElementById("cancelImportBtn");
+const deleteTicketModal = document.getElementById("deleteTicketModal");
+const deleteTicketError = document.getElementById("deleteTicketError");
+const deleteTicketMessage = document.getElementById("deleteTicketMessage");
+const confirmDeleteTicketBtn = document.getElementById("confirmDeleteTicketBtn");
+const cancelDeleteTicketBtn = document.getElementById("cancelDeleteTicketBtn");
 
 const THEME_KEY = "reviewer_dashboard_theme";
 
@@ -77,7 +93,6 @@ function resetNewTicketForm() {
   newReviewerId.value = "";
   newLineNumber.value = "";
   newCategory.value = "minor";
-  newSection.value = "";
   newVerbatim.value = "";
   newResponse.value = "";
   newCompleted.checked = false;
@@ -98,7 +113,6 @@ async function createTicket() {
     reviewer_id: newReviewerId.value.trim(),
     line_number: newLineNumber.value.trim(),
     comment_category: newCategory.value,
-    manuscript_section: newSection.value.trim(),
     verbatim_comment: newVerbatim.value.trim(),
     response_text: newResponse.value,
     status: newCompleted.checked ? "COMPLETED" : "OPEN",
@@ -170,7 +184,6 @@ function buildTicketCard(ticket) {
       <span>${escapeHtml(ticket.reviewer_id)}</span>
       <span>Line ${escapeHtml(ticket.line_number_display)}</span>
       <span>${escapeHtml(ticket.comment_category)}</span>
-      <span>${escapeHtml(ticket.manuscript_section)}</span>
     </div>
     <div class="ticket-preview">${escapeHtml(ticketPreview(ticket.verbatim_comment))}</div>
   `;
@@ -241,11 +254,6 @@ function renderDetail(ticket) {
     </div>
 
     <div class="form-row">
-      <label for="sectionField">section</label>
-      <input id="sectionField" value="${escapeHtml(ticket.manuscript_section || "")}" />
-    </div>
-
-    <div class="form-row">
       <label for="verbatimField">verbatim_comment</label>
       <textarea id="verbatimField">${escapeHtml(ticket.verbatim_comment)}</textarea>
     </div>
@@ -267,6 +275,7 @@ function renderDetail(ticket) {
       <button id="saveBtn" class="primary" type="button">Save</button>
       <button id="markCompleteBtn" type="button">Mark completed</button>
       <button id="reopenBtn" type="button">Reopen</button>
+      <button id="deleteTicketBtn" class="danger" type="button">Delete Ticket</button>
     </div>
     <p class="muted">Tickets remain editable even after completion.</p>
   `;
@@ -274,6 +283,7 @@ function renderDetail(ticket) {
   document.getElementById("saveBtn").addEventListener("click", () => saveTicket(ticket.id));
   document.getElementById("markCompleteBtn").addEventListener("click", () => saveTicket(ticket.id, "COMPLETED"));
   document.getElementById("reopenBtn").addEventListener("click", () => saveTicket(ticket.id, "OPEN"));
+  document.getElementById("deleteTicketBtn").addEventListener("click", () => openDeleteTicketModal(ticket));
 }
 
 async function loadTickets(keepSelection = true) {
@@ -281,9 +291,7 @@ async function loadTickets(keepSelection = true) {
   if (state.filters.search) params.set("search", state.filters.search);
   if (state.filters.reviewer_id) params.set("reviewer_id", state.filters.reviewer_id);
   if (state.filters.comment_category) params.set("comment_category", state.filters.comment_category);
-  if (state.filters.manuscript_section) params.set("manuscript_section", state.filters.manuscript_section);
   if (state.filters.status) params.set("status", state.filters.status);
-  if (state.filters.sort) params.set("sort", state.filters.sort);
 
   const query = params.toString() ? `?${params.toString()}` : "";
   const payload = await request(`/api/manuscripts/${state.manuscriptId}/tickets${query}`);
@@ -295,7 +303,6 @@ async function loadTickets(keepSelection = true) {
   }
 
   updateReviewerFilter(payload.filters.reviewer_ids);
-  updateSectionFilter(payload.filters.sections);
   renderBoard();
 
   if (state.selectedTicketId) {
@@ -323,23 +330,6 @@ function updateReviewerFilter(reviewerIds) {
   }
 }
 
-function updateSectionFilter(sections) {
-  const prev = state.filters.manuscript_section;
-  sectionFilter.innerHTML = '<option value="">All sections</option>';
-  sections.forEach((section) => {
-    const opt = document.createElement("option");
-    opt.value = section;
-    opt.textContent = section;
-    sectionFilter.appendChild(opt);
-  });
-  if (sections.includes(prev)) {
-    sectionFilter.value = prev;
-  } else {
-    sectionFilter.value = "";
-    state.filters.manuscript_section = "";
-  }
-}
-
 function selectedTicket() {
   return state.tickets.find((ticket) => ticket.id === state.selectedTicketId) || null;
 }
@@ -354,7 +344,6 @@ function currentFormValues() {
   const reviewerId = document.getElementById("reviewerIdField")?.value || "";
   const lineNumber = document.getElementById("lineNumberField")?.value || "";
   const category = document.getElementById("categoryField")?.value || "";
-  const section = document.getElementById("sectionField")?.value || "";
   const verbatim = document.getElementById("verbatimField")?.value || "";
   const response = document.getElementById("responseField")?.value || "";
   const completedChecked = Boolean(document.getElementById("completedField")?.checked);
@@ -362,7 +351,6 @@ function currentFormValues() {
     reviewer_id: reviewerId,
     line_number_display: lineNumber,
     comment_category: category,
-    manuscript_section: section,
     verbatim_comment: verbatim,
     response_text: response,
     status: completedChecked ? "COMPLETED" : "OPEN",
@@ -404,69 +392,202 @@ async function saveTicket(ticketId, overrideStatus = null) {
   }
 }
 
-async function createManuscript() {
-  const name = window.prompt("New manuscript name:");
-  if (!name) return;
-  try {
-    const payload = await request("/api/manuscripts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    const manuscript = payload.manuscript;
-    const opt = document.createElement("option");
-    opt.value = String(manuscript.id);
-    opt.textContent = manuscript.name;
-    manuscriptSelect.appendChild(opt);
-    manuscriptSelect.value = String(manuscript.id);
-    state.manuscriptId = manuscript.id;
-    state.selectedTicketId = null;
-    await loadTickets(false);
-    setStatus(`Created manuscript \"${manuscript.name}\"`);
-  } catch (err) {
-    setStatus(err.message, true);
-  }
+function addManuscriptOption(manuscript) {
+  const opt = document.createElement("option");
+  opt.value = String(manuscript.id);
+  opt.textContent = manuscript.name;
+  manuscriptSelect.appendChild(opt);
+  return opt;
 }
 
-async function renameManuscript() {
+async function createManuscriptRecord(name) {
+  const payload = await request("/api/manuscripts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  addManuscriptOption(payload.manuscript);
+  return payload.manuscript;
+}
+
+function openManuscriptModal(mode) {
   const currentOption = manuscriptSelect.selectedOptions[0];
-  if (!currentOption) return;
-  const name = window.prompt("Rename manuscript:", currentOption.textContent || "");
-  if (!name) return;
+  if (mode === "rename" && !currentOption) return;
+  state.manuscriptModalMode = mode;
+  manuscriptModalError.textContent = "";
+  manuscriptModalTitle.textContent = mode === "create" ? "New Manuscript" : "Rename Manuscript";
+  saveManuscriptBtn.textContent = mode === "create" ? "Create Manuscript" : "Save Name";
+  manuscriptNameInput.value = mode === "create" ? "" : currentOption.textContent || "";
+  manuscriptModal.classList.remove("hidden");
+  manuscriptNameInput.focus();
+  manuscriptNameInput.select();
+}
+
+function closeManuscriptModal() {
+  manuscriptModal.classList.add("hidden");
+  manuscriptModalError.textContent = "";
+}
+
+async function saveManuscript() {
+  const name = manuscriptNameInput.value.trim();
+  if (!name) {
+    manuscriptModalError.textContent = "Manuscript name is required.";
+    return;
+  }
 
   try {
+    if (state.manuscriptModalMode === "create") {
+      const manuscript = await createManuscriptRecord(name);
+      manuscriptSelect.value = String(manuscript.id);
+      state.manuscriptId = manuscript.id;
+      state.selectedTicketId = null;
+      closeManuscriptModal();
+      await loadTickets(false);
+      setStatus(`Created manuscript \"${manuscript.name}\"`);
+      return;
+    }
+
     const payload = await request(`/api/manuscripts/${state.manuscriptId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     });
-    currentOption.textContent = payload.manuscript.name;
+    manuscriptSelect.selectedOptions[0].textContent = payload.manuscript.name;
+    closeManuscriptModal();
     setStatus(`Renamed manuscript to \"${payload.manuscript.name}\"`);
   } catch (err) {
+    manuscriptModalError.textContent = err.message;
     setStatus(err.message, true);
   }
+}
+
+function populateImportDestinations() {
+  importManuscriptSelect.innerHTML = "";
+  Array.from(manuscriptSelect.options).forEach((manuscriptOption) => {
+    const option = document.createElement("option");
+    option.value = manuscriptOption.value;
+    option.textContent = manuscriptOption.textContent;
+    importManuscriptSelect.appendChild(option);
+  });
+  const newOption = document.createElement("option");
+  newOption.value = "new";
+  newOption.textContent = "Create a new manuscript...";
+  importManuscriptSelect.appendChild(newOption);
+  importManuscriptSelect.value = String(state.manuscriptId);
+  importNewNameRow.classList.add("hidden");
+  importNewName.value = "";
+}
+
+function openImportModal() {
+  const file = importFileInput.files?.[0];
+  if (!file) {
+    setStatus("Choose a CSV or XLSX file first", true);
+    return;
+  }
+  importModalError.textContent = "";
+  importFileName.textContent = file.name;
+  populateImportDestinations();
+  importModal.classList.remove("hidden");
+  importManuscriptSelect.focus();
+}
+
+function closeImportModal() {
+  importModal.classList.add("hidden");
+  importModalError.textContent = "";
+}
+
+function updateImportDestinationFields() {
+  const creating = importManuscriptSelect.value === "new";
+  importNewNameRow.classList.toggle("hidden", !creating);
+  if (creating) importNewName.focus();
 }
 
 async function importTickets() {
   const file = importFileInput.files?.[0];
   if (!file) {
-    setStatus("Choose a CSV or XLSX file first", true);
+    importModalError.textContent = "Choose a CSV or XLSX file first.";
     return;
+  }
+
+  let targetId = Number(importManuscriptSelect.value);
+  if (importManuscriptSelect.value === "new") {
+    const name = importNewName.value.trim();
+    if (!name) {
+      importModalError.textContent = "New manuscript name is required.";
+      return;
+    }
+    confirmImportBtn.disabled = true;
+    try {
+      const manuscript = await createManuscriptRecord(name);
+      targetId = manuscript.id;
+      manuscriptSelect.value = String(targetId);
+      state.manuscriptId = targetId;
+      state.selectedTicketId = null;
+      populateImportDestinations();
+      importManuscriptSelect.value = String(targetId);
+      setStatus(`Created manuscript \"${manuscript.name}\"; ready to import`);
+    } catch (err) {
+      confirmImportBtn.disabled = false;
+      importModalError.textContent = err.message;
+      setStatus(err.message, true);
+      return;
+    }
+  } else {
+    confirmImportBtn.disabled = true;
   }
 
   const formData = new FormData();
   formData.append("file", file);
 
   try {
-    const payload = await request(`/api/manuscripts/${state.manuscriptId}/import`, {
+    const payload = await request(`/api/manuscripts/${targetId}/import`, {
       method: "POST",
       body: formData,
     });
+    state.manuscriptId = targetId;
+    manuscriptSelect.value = String(targetId);
+    state.selectedTicketId = null;
     importFileInput.value = "";
+    closeImportModal();
     setStatus(`Imported ${payload.imported} ticket(s)`);
     await loadTickets(false);
   } catch (err) {
+    importModalError.textContent = err.message;
     setStatus(err.message, true);
+  } finally {
+    confirmImportBtn.disabled = false;
+  }
+}
+
+function openDeleteTicketModal(ticket) {
+  state.pendingDeleteTicketId = ticket.id;
+  deleteTicketError.textContent = "";
+  deleteTicketMessage.textContent = `Delete ticket #${ticket.id} (${ticket.reviewer_id})?`;
+  deleteTicketModal.classList.remove("hidden");
+  confirmDeleteTicketBtn.focus();
+}
+
+function closeDeleteTicketModal() {
+  deleteTicketModal.classList.add("hidden");
+  deleteTicketError.textContent = "";
+  state.pendingDeleteTicketId = null;
+}
+
+async function deleteSelectedTicket() {
+  const ticketId = state.pendingDeleteTicketId;
+  if (!ticketId) return;
+  confirmDeleteTicketBtn.disabled = true;
+  try {
+    await request(`/api/tickets/${ticketId}`, { method: "DELETE" });
+    closeDeleteTicketModal();
+    state.selectedTicketId = null;
+    await loadTickets(false);
+    setStatus(`Deleted ticket #${ticketId}`);
+  } catch (err) {
+    deleteTicketError.textContent = err.message;
+    setStatus(err.message, true);
+  } finally {
+    confirmDeleteTicketBtn.disabled = false;
   }
 }
 
@@ -480,9 +601,7 @@ function updateFilterState() {
   state.filters.search = searchInput.value.trim();
   state.filters.reviewer_id = reviewerFilter.value;
   state.filters.comment_category = categoryFilter.value;
-  state.filters.manuscript_section = sectionFilter.value;
   state.filters.status = statusFilter.value;
-  state.filters.sort = sortSelect.value;
 }
 
 async function navigateOpen(direction) {
@@ -492,8 +611,6 @@ async function navigateOpen(direction) {
   if (state.filters.search) params.set("search", state.filters.search);
   if (state.filters.reviewer_id) params.set("reviewer_id", state.filters.reviewer_id);
   if (state.filters.comment_category) params.set("comment_category", state.filters.comment_category);
-  if (state.filters.manuscript_section) params.set("manuscript_section", state.filters.manuscript_section);
-  if (state.filters.sort) params.set("sort", state.filters.sort);
 
   try {
     const payload = await request(`/api/manuscripts/${state.manuscriptId}/next-open?${params.toString()}`);
@@ -529,9 +646,22 @@ function wireEvents() {
     setStatus("Switched manuscript");
   });
 
-  createManuscriptBtn.addEventListener("click", createManuscript);
-  renameManuscriptBtn.addEventListener("click", renameManuscript);
-  importBtn.addEventListener("click", importTickets);
+  createManuscriptBtn.addEventListener("click", () => openManuscriptModal("create"));
+  renameManuscriptBtn.addEventListener("click", () => openManuscriptModal("rename"));
+  saveManuscriptBtn.addEventListener("click", saveManuscript);
+  cancelManuscriptBtn.addEventListener("click", closeManuscriptModal);
+  manuscriptNameInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      saveManuscript();
+    }
+  });
+  importBtn.addEventListener("click", openImportModal);
+  importManuscriptSelect.addEventListener("change", updateImportDestinationFields);
+  confirmImportBtn.addEventListener("click", importTickets);
+  cancelImportBtn.addEventListener("click", closeImportModal);
+  confirmDeleteTicketBtn.addEventListener("click", deleteSelectedTicket);
+  cancelDeleteTicketBtn.addEventListener("click", closeDeleteTicketModal);
   exportMdBtn.addEventListener("click", exportMarkdown);
   addTicketBtn.addEventListener("click", openNewTicketModal);
   saveNewTicketBtn.addEventListener("click", createTicket);
@@ -540,6 +670,15 @@ function wireEvents() {
     if (event.target === newTicketModal) {
       closeNewTicketModal();
     }
+  });
+  manuscriptModal.addEventListener("click", (event) => {
+    if (event.target === manuscriptModal) closeManuscriptModal();
+  });
+  importModal.addEventListener("click", (event) => {
+    if (event.target === importModal) closeImportModal();
+  });
+  deleteTicketModal.addEventListener("click", (event) => {
+    if (event.target === deleteTicketModal) closeDeleteTicketModal();
   });
 
   const filterHandler = async () => {
@@ -550,19 +689,25 @@ function wireEvents() {
   searchInput.addEventListener("input", filterHandler);
   reviewerFilter.addEventListener("change", filterHandler);
   categoryFilter.addEventListener("change", filterHandler);
-  sectionFilter.addEventListener("change", filterHandler);
   statusFilter.addEventListener("change", filterHandler);
-  sortSelect.addEventListener("change", filterHandler);
 
   nextOpenBtn.addEventListener("click", () => navigateOpen("next"));
   prevOpenBtn.addEventListener("click", () => navigateOpen("prev"));
   themeToggleBtn.addEventListener("click", toggleTheme);
 
   window.addEventListener("keydown", async (event) => {
-    if (event.key === "Escape" && !newTicketModal.classList.contains("hidden")) {
-      event.preventDefault();
-      closeNewTicketModal();
-      return;
+    if (event.key === "Escape") {
+      const openModal = [deleteTicketModal, importModal, manuscriptModal, newTicketModal].find(
+        (modal) => !modal.classList.contains("hidden"),
+      );
+      if (openModal) {
+        event.preventDefault();
+        if (openModal === deleteTicketModal) closeDeleteTicketModal();
+        if (openModal === importModal) closeImportModal();
+        if (openModal === manuscriptModal) closeManuscriptModal();
+        if (openModal === newTicketModal) closeNewTicketModal();
+        return;
+      }
     }
     if (keyboardTargetIsInput(event.target)) return;
     if (event.key === "n" || event.key === "N") {

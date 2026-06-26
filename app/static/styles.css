@@ -111,6 +111,12 @@ button.primary {
   border-color: var(--accent);
 }
 
+button.danger {
+  background: #b42318;
+  color: #fff;
+  border-color: #b42318;
+}
+
 .layout {
   display: grid;
   grid-template-columns: 1.45fr 1fr;
@@ -254,6 +260,10 @@ textarea {
   border-radius: 10px;
   background: var(--panel);
   padding: 12px;
+}
+
+.modal-content-small {
+  width: min(460px, 96vw);
 }
 
 .hidden {

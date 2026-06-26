@@ -9,7 +9,7 @@
   <body>
     <header class="topbar">
       <h1>Reviewer Ticket Dashboard</h1>
-      <p>Default sort: TODO first, then reviewers (`R#`), unknown IDs, and editors (`E#`). Section sort is available in the toolbar.</p>
+      <p>Default sort: TODO first, then reviewers (`R#`), unknown IDs, and editors (`E#`).</p>
     </header>
 
     <section class="toolbar">
@@ -44,17 +44,10 @@
           <option value="major">major</option>
           <option value="minor">minor</option>
         </select>
-        <select id="sectionFilter">
-          <option value="">All sections</option>
-        </select>
         <select id="statusFilter">
           <option value="">All statuses</option>
           <option value="OPEN">Open</option>
           <option value="COMPLETED">Completed</option>
-        </select>
-        <select id="sortSelect">
-          <option value="reviewer">Reviewer order</option>
-          <option value="section">Section order</option>
         </select>
       </div>
 
@@ -83,6 +76,54 @@
       </aside>
     </main>
 
+    <div id="manuscriptModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="manuscriptModalTitle">
+      <div class="modal-content modal-content-small">
+        <h2 id="manuscriptModalTitle">New Manuscript</h2>
+        <div id="manuscriptModalError" class="error"></div>
+        <div class="form-row">
+          <label for="manuscriptNameInput">Manuscript name</label>
+          <input id="manuscriptNameInput" autocomplete="off" />
+        </div>
+        <div class="detail-actions">
+          <button id="saveManuscriptBtn" class="primary" type="button">Create Manuscript</button>
+          <button id="cancelManuscriptBtn" type="button">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="importModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
+      <div class="modal-content modal-content-small">
+        <h2 id="importModalTitle">Import Tickets</h2>
+        <div id="importModalError" class="error"></div>
+        <p>File: <strong id="importFileName"></strong></p>
+        <div class="form-row">
+          <label for="importManuscriptSelect">Destination manuscript</label>
+          <select id="importManuscriptSelect"></select>
+        </div>
+        <div id="importNewNameRow" class="form-row hidden">
+          <label for="importNewName">New manuscript name</label>
+          <input id="importNewName" autocomplete="off" />
+        </div>
+        <div class="detail-actions">
+          <button id="confirmImportBtn" class="primary" type="button">Import Tickets</button>
+          <button id="cancelImportBtn" type="button">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="deleteTicketModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="deleteTicketTitle">
+      <div class="modal-content modal-content-small">
+        <h2 id="deleteTicketTitle">Delete Ticket</h2>
+        <div id="deleteTicketError" class="error"></div>
+        <p id="deleteTicketMessage"></p>
+        <p class="muted">This permanently removes the ticket.</p>
+        <div class="detail-actions">
+          <button id="confirmDeleteTicketBtn" class="danger" type="button">Delete Ticket</button>
+          <button id="cancelDeleteTicketBtn" type="button">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <div id="newTicketModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="newTicketTitle">
       <div class="modal-content">
         <h2 id="newTicketTitle">Add Ticket</h2>
@@ -102,10 +143,6 @@
             <option value="major">major</option>
             <option value="minor" selected>minor</option>
           </select>
-        </div>
-        <div class="form-row">
-          <label for="newSection">section</label>
-          <input id="newSection" placeholder="Abstract, Introduction, Results..." />
         </div>
         <div class="form-row">
           <label for="newVerbatim">verbatim_comment</label>

@@ -14,7 +14,7 @@ Repository model:
 Core workflow:
 
 1. Create or select a manuscript
-2. Import reviewer comments
+2. Choose the destination manuscript and import reviewer comments
 3. Edit ticket details and write responses
 4. Mark tickets complete when a response exists
 5. Export the manuscript’s response notes to Markdown
@@ -27,13 +27,13 @@ Core workflow:
   - `line_number`
   - `verbatim_comment`
   - `comment_category`
-  - `manuscript_section`
   - `response_text`
 - Manuscript create/select/rename workflow
 - Manual ticket creation
-- CSV/XLSX import
+- CSV/XLSX import with explicit destination selection
+- Permanent ticket deletion with confirmation
 - Markdown export per manuscript
-- Search, filters, and reviewer/section sort modes
+- Search, filters, and reviewer sorting
 - Next/previous open ticket navigation
 - TODO-first sort behavior
 - Theme toggle
@@ -45,8 +45,8 @@ Core workflow:
 - A ticket cannot be marked `COMPLETED` unless `response_text` is non-empty.
 - Completed tickets can still be edited.
 - Completed tickets can be reopened.
-- Section values are grouped case-insensitively, so `abstract` and `Abstract` are treated as the same section.
 - Export produces Markdown for the current manuscript.
+- Deleting a ticket permanently removes it after confirmation.
 
 ## Import Format
 
@@ -57,7 +57,7 @@ Import files must include these columns:
 3. `verbatim_comment`
 4. `comment_category`
 
-Imports may also include an optional `section` column. Column names are matched case-insensitively. Blank or missing section values are saved as `Unassigned`.
+Column names are matched case-insensitively. For compatibility with older files, imports may include an optional `section` column. Section values remain stored in the database but are not shown or used by the current interface.
 
 Example:
 
@@ -84,9 +84,7 @@ Reviewer order is the default. Tickets are sorted in this order:
 5. Then by line number
 6. Then by creation time
 
-Section order can be selected from the sort dropdown. In that mode, tickets sort by case-insensitive `manuscript_section` first, then use the reviewer order rules as tie-breakers.
-
-The section filter also matches case-insensitively. If one ticket is tagged `Abstract` and another is tagged `abstract`, the filter list shows one section option using the first spelling already stored for that manuscript.
+Before an import begins, the app shows the selected file and requires a destination manuscript. You can choose an existing manuscript or create a new one from the import dialog. If file validation fails after creating a manuscript, that manuscript remains selected so the corrected file can be retried.
 
 ## Data Storage
 

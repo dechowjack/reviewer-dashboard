@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import io
 import re
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -233,7 +234,6 @@ def format_ticket_markdown(ticket: dict[str, Any]) -> str:
         f"- Status: **{ticket['status']}**",
         f"- Line: `{ticket['line_number_display']}`",
         f"- Category: `{ticket['comment_category']}`",
-        f"- Section: `{ticket['manuscript_section']}`",
         "",
         "### Verbatim Comment",
         ticket["verbatim_comment"].strip() or "_(empty)_",
@@ -425,8 +425,8 @@ def create_manuscript(payload: dict[str, str]) -> dict[str, Any]:
     with get_conn() as conn:
         try:
             cur = conn.execute("INSERT INTO manuscripts (name) VALUES (?)", (name,))
-        except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"Could not create manuscript: {exc}") from exc
+        except sqlite3.IntegrityError as exc:
+            raise HTTPException(status_code=409, detail="A manuscript with that name already exists") from exc
         manuscript = conn.execute(
             "SELECT id, name, created_at FROM manuscripts WHERE id = ?", (cur.lastrowid,)
         ).fetchone()
@@ -439,7 +439,10 @@ def rename_manuscript(manuscript_id: int, payload: dict[str, str]) -> dict[str, 
     if not name:
         raise HTTPException(status_code=400, detail="New manuscript name is required")
     with get_conn() as conn:
-        cur = conn.execute("UPDATE manuscripts SET name = ? WHERE id = ?", (name, manuscript_id))
+        try:
+            cur = conn.execute("UPDATE manuscripts SET name = ? WHERE id = ?", (name, manuscript_id))
+        except sqlite3.IntegrityError as exc:
+            raise HTTPException(status_code=409, detail="A manuscript with that name already exists") from exc
         if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail="Manuscript not found")
         manuscript = conn.execute(
@@ -647,6 +650,15 @@ def get_ticket(ticket_id: int) -> dict[str, Any]:
     if not row:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return {"ticket": dict(row)}
+
+
+@app.delete("/api/tickets/{ticket_id}")
+def delete_ticket(ticket_id: int) -> dict[str, Any]:
+    with get_conn() as conn:
+        cur = conn.execute("DELETE FROM tickets WHERE id = ?", (ticket_id,))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+    return {"deleted": ticket_id}
 
 
 @app.patch("/api/tickets/{ticket_id}")
